@@ -7,18 +7,36 @@ const isDragging = ref(false)
 let offsetX = 0
 let offsetY = 0
 
-const onMouseMove = (moveEvent: MouseEvent) => {
-  // 发送绝对屏幕坐标和点击时的初始偏移
-  window.electron.ipcRenderer.send('window-move', { 
-    screenX: moveEvent.screenX, 
-    screenY: moveEvent.screenY,
+// 用 rAF 节流，只在每帧提交一次 IPC，避免 mousemove 洪泛导致延迟
+let rafId: number | null = null
+let latestScreenX = 0
+let latestScreenY = 0
+
+const flushMove = () => {
+  rafId = null
+  window.electron.ipcRenderer.send('window-move', {
+    screenX: latestScreenX,
+    screenY: latestScreenY,
     offsetX,
     offsetY
   })
+}
+
+const onMouseMove = (moveEvent: MouseEvent) => {
+  latestScreenX = moveEvent.screenX
+  latestScreenY = moveEvent.screenY
   isDragging.value = true
+  if (rafId === null) {
+    rafId = requestAnimationFrame(flushMove)
+  }
 }
 
 const stopDragging = () => {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    // 确保最终位置被提交
+    flushMove()
+  }
   document.removeEventListener('mousemove', onMouseMove)
   document.removeEventListener('mouseup', stopDragging)
 }
@@ -28,7 +46,7 @@ const onMouseDown = (e: MouseEvent) => {
   // 记录鼠标点击位置相对于窗口左下角的偏移 (在 80x80 坐标系内)
   offsetX = e.clientX
   offsetY = e.clientY
-  
+
   document.addEventListener('mousemove', onMouseMove)
   document.addEventListener('mouseup', stopDragging)
 }
