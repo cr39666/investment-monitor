@@ -5,7 +5,6 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
 
 const containerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
@@ -13,6 +12,11 @@ let resizeObserver: ResizeObserver | null = null
 const goToDetail = () => {
   // 跳转到详情页
   router.push('/detail')
+}
+
+const goToSetting = () => {
+  // 跳转到设置页
+  router.push('/setting')
 }
 
 const backToBall = () => {
@@ -69,10 +73,10 @@ onUnmounted(() => {
       <p class="tip">Please try clicking <code>the logo above</code> to display your stocks</p>
       <div class="actions">
         <div class="action">
-          <a href="javascript:void(0)" @click="goToDetail">Go try it</a>
+          <a href="javascript:void(0)" @click="goToDetail">View</a>
         </div>
         <div class="action">
-          <a href="javascript:void(0)" @click="ipcHandle">Setting...</a>
+          <a href="javascript:void(0)" @click="goToSetting">Setting</a>
         </div>
       </div>
     </div>

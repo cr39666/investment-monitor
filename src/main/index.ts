@@ -1,10 +1,13 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Tray, Menu } from 'electron'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 
+let tray: Tray | null = null
+let mainWindow: BrowserWindow | null = null
+
 function createWindow(): void {
   // 创建浏览器窗口。
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 60,
     height: 60,
     center: false,
@@ -23,7 +26,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow?.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -40,6 +43,43 @@ function createWindow(): void {
   }
 }
 
+// 创建托盘
+function createTray(): void {
+  tray = new Tray(icon)
+  const contextMenu = Menu.buildFromTemplate([
+    { 
+      label: 'Open Home', 
+      click: () => {
+        mainWindow?.webContents.send('navigate', '/home')
+        mainWindow?.setSkipTaskbar(false)
+      } 
+    },
+    { 
+      label: 'Open Ball', 
+      click: () => {
+        mainWindow?.webContents.send('navigate', '/')
+        mainWindow?.setContentSize(80, 80)
+        mainWindow?.setSkipTaskbar(true)
+      } 
+    },
+    { type: 'separator' },
+    { label: 'Quit', click: () => app.quit() }
+  ])
+  
+  tray.setToolTip('Stock Watcher')
+  tray.setContextMenu(contextMenu)
+  
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.focus()
+      } else {
+        mainWindow.show()
+      }
+    }
+  })
+}
+
 // 这个方法会在 Electron 完成初始化
 // 并且准备好创建浏览器窗口时被调用。
 // 部分 API 只能在此事件发生后才能使用。
@@ -48,6 +88,9 @@ app.whenReady().then(() => {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.electron')
   }
+
+  createTray()
+  createWindow()
 
   // 开发环境下的一些窗口快捷键（可自行实现或留空）
   app.on('browser-window-created', (_, window) => {
@@ -65,17 +108,50 @@ app.whenReady().then(() => {
   // IPC 测试
   ipcMain.on('ping', () => console.log('pong'))
 
+let ballAlwaysOnTop = true
+let windowAlwaysOnTop = false
+
+function applyAlwaysOnTop(w: number, h: number): void {
+  if (mainWindow) {
+    // 如果尺寸较小（悬浮球状态）
+    if (w <= 100 && h <= 100) {
+      mainWindow.setAlwaysOnTop(ballAlwaysOnTop)
+    } else {
+      mainWindow.setAlwaysOnTop(windowAlwaysOnTop)
+    }
+  }
+}
+
   ipcMain.on('resize-window', (event, width: number, height: number) => {
     const browserWindow = BrowserWindow.fromWebContents(event.sender)
     if (browserWindow) {
       const w = Math.ceil(width)
       const h = Math.ceil(height)
 
+      // 如果尺寸较大（非悬浮球状态），在任务栏显示，方便切换和关闭
+      if (w > 100 || h > 100) {
+        browserWindow.setSkipTaskbar(false)
+      } else {
+        browserWindow.setSkipTaskbar(true)
+      }
+
+      applyAlwaysOnTop(w, h)
+
       // 在 Windows 上，对不可调整大小的窗口调用 setSize 可能会失效
       // 临时启用 resizable 以确保 setContentSize 成功生效
       browserWindow.setResizable(true)
       browserWindow.setContentSize(w, h, false) // 禁用动画，防止产生透明“残影”
       browserWindow.setResizable(false)
+    }
+  })
+
+  ipcMain.on('set-always-on-top-config', (_event, config: { ball: boolean; window: boolean }) => {
+    ballAlwaysOnTop = config.ball
+    windowAlwaysOnTop = config.window
+    
+    if (mainWindow) {
+      const [w, h] = mainWindow.getContentSize()
+      applyAlwaysOnTop(w, h)
     }
   })
 
@@ -86,8 +162,6 @@ app.whenReady().then(() => {
       browserWindow.setPosition(Math.round(screenX - offsetX), Math.round(screenY - offsetY))
     }
   })
-
-  createWindow()
 
   app.on('activate', function () {
     // 在 macOS 上，通常在点击停靠栏图标且没有其他窗口打开时，

@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import FloatingBall from '../views/FloatingBall.vue'
 import Detail from '../views/Detail.vue'
 import Home from '../views/Home.vue'
+import Setting from '../views/Setting.vue'
 
 const routes = [
   {
@@ -18,6 +19,11 @@ const routes = [
     path: '/home',
     name: 'Home',
     component: Home
+  },
+  {
+    path: '/setting',
+    name: 'Setting',
+    component: Setting
   }
 ]
 
