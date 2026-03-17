@@ -34,10 +34,10 @@ let timer: ReturnType<typeof setInterval> | null = null
 const containerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
-// Name 列的展示模式：0=仅名称, 1=仅代码, 2=名称+代码
+// Name 列的展示模式：0=仅名称, 1=仅代码
 const nameDisplayMode = ref(0)
 const toggleNameDisplayMode = () => {
-  nameDisplayMode.value = (nameDisplayMode.value + 1) % 3
+  nameDisplayMode.value = (nameDisplayMode.value + 1) % 2
 }
 
 // 排序状态
@@ -103,6 +103,12 @@ const displayStocks = computed(() => {
 const isCensored = ref(false)
 const toggleCensor = () => {
   isCensored.value = !isCensored.value
+}
+
+// Avg 列展示模式：0=均摊成本, 1=持仓市值
+const avgDisplayMode = ref(0)
+const toggleAvgDisplayMode = () => {
+  avgDisplayMode.value = (avgDisplayMode.value + 1) % 2
 }
 
 // 选中的行代码（多选）
@@ -200,7 +206,7 @@ const addStock = async () => {
     })
     saveStocks()
     inputCode.value = ''
-    fetchQuotes()
+    fetchQuotes(true)
     toastRef.value?.show('Stock Added!', 'success')
   }
 }
@@ -300,9 +306,33 @@ const adjustStockFlow = async (stock: StockItem) => {
   }
 }
 
+// 检查是否为 A 股交易时间
+const isTradingTime = () => {
+  const now = new Date()
+  const day = now.getDay()
+  const hours = now.getHours()
+  const minutes = now.getMinutes()
+  
+  // 周六周日不交易
+  if (day === 0 || day === 6) return false
+  
+  const timeNum = hours * 100 + minutes
+  
+  // A 股交易时间：09:15 - 11:30, 13:00 - 15:00
+  const isMorning = timeNum >= 915 && timeNum <= 1130
+  const isAfternoon = timeNum >= 1300 && timeNum <= 1500
+  
+  return isMorning || isAfternoon
+}
+
 // 获取行情数据 (使用 JSONP 注入 script 标签，解决 GBK 编码跨域)
-const fetchQuotes = () => {
+const fetchQuotes = (force = false) => {
   if (stocks.value.length === 0) return
+  
+  // 非交易时间且非强制刷新(初始化)时，跳过请求
+  if (!force && !isTradingTime()) {
+    return
+  }
 
   const codes = stocks.value.map((s) => s.code).join(',')
   const scriptId = 'jsonp-stock-script'
@@ -374,6 +404,13 @@ const calculateTotalPnl = (stock: StockItem): number|null => {
   return (quote.currentPrice - stock.cost) * stock.amount * 100
 }
 
+// 计算某只股票的持仓市值 = 现价 * 股数 * 100
+const calculateMarketValue = (stock: StockItem): number => {
+  const quote = quotes.value[stock.code]
+  if (!quote) return 0
+  return quote.currentPrice * stock.amount * 100
+}
+
 // 总当日盈亏额
 const totalDailyPnl = computed(() => {
   return stocks.value.reduce((total, stock) => total + calculateDailyPnl(stock), 0)
@@ -389,8 +426,8 @@ const totalHoldingPnl = computed(() => {
 
 onMounted(async () => {
   loadStocks()
-  fetchQuotes()
-  timer = setInterval(fetchQuotes, 1000)
+  fetchQuotes(true) // 初始强制获取一次，不论是否在交易时间
+  timer = setInterval(() => fetchQuotes(false), 1000)
 
   // 等待 Vue DOM 更新完毕后再测量，避免拿到未渲染完成的尺寸
   await nextTick()
@@ -434,8 +471,12 @@ onUnmounted(() => {
       <table class="stock-table">
         <thead>
           <tr>
-            <th @click="toggleNameDisplayMode" class="clickable-th" title="Toggle display">
-              Name <span class="toggle-icon">🔁</span>
+            <th 
+              :title="nameDisplayMode === 0 ? '名称 (Name)' : '代码 (Code)'"
+              @click="toggleNameDisplayMode" 
+              class="clickable-th" 
+            >
+              {{ nameDisplayMode === 0 ? 'Name' : 'Code' }} <span class="toggle-icon">🔁</span>
             </th>
             <th title="当前价 (Current Price)" @click="toggleSort('curPrice')" class="clickable-th">
               Price <span class="sort-icon">{{ sortColumn === 'curPrice' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
@@ -446,7 +487,13 @@ onUnmounted(() => {
             <th title="持仓总盈亏 (Total Pnl)" @click="toggleSort('tpnl')" class="clickable-th">
               T.PnL <span class="sort-icon">{{ sortColumn === 'tpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
             </th>
-            <th title="均摊成本/保本价 (Avg. Buy Price)">Avg</th>
+            <th 
+              :title="avgDisplayMode === 0 ? '均摊成本/保本价 (Avg. Buy Price)' : '持仓市值 (Market Value)'" 
+              @click="toggleAvgDisplayMode" 
+              class="clickable-th"
+            >
+              {{ avgDisplayMode === 0 ? 'Avg' : 'Val' }} <span class="toggle-icon">🔁</span>
+            </th>
             <th title="涨跌幅 (Change)" @click="toggleSort('change')" class="clickable-th">
               Chg% <span class="sort-icon">{{ sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
             </th>
@@ -463,19 +510,10 @@ onUnmounted(() => {
             <td :class="['name-cell', quotes[stock.code]?.changeAmount >= 0 ? 'red' : 'green']">
               <template v-if="!isCensored">
                 <div v-if="nameDisplayMode === 0">{{ formatName(quotes[stock.code]?.name) }}</div>
-                <div v-else-if="nameDisplayMode === 1">{{ stock.code }}</div>
-                <div v-else>
-                  <div>{{ formatName(quotes[stock.code]?.name) }}</div>
-                  <div class="code-sub">{{ stock.code }}</div>
-                </div>
+                <div v-else>{{ stock.code }}</div>
               </template>
               <template v-else>
-                <div v-if="nameDisplayMode === 0">❇❇</div>
-                <div v-else-if="nameDisplayMode === 1">{{ stock.code }}</div>
-                <div v-else>
-                  <div>❇❇</div>
-                  <div class="code-sub">{{ stock.code }}</div>
-                </div>
+                <div>❇❇</div>
               </template>
             </td>
             <td 
@@ -499,7 +537,14 @@ onUnmounted(() => {
               <span v-else>❇❇</span>
             </td>
             <td>
-              <span v-if="!isCensored">{{ stock.cost?.toFixed(3) }}</span>
+              <span v-if="!isCensored">
+                <template v-if="avgDisplayMode === 0">
+                  {{ stock.cost?.toFixed(3) }}
+                </template>
+                <template v-else>
+                  {{ calculateMarketValue(stock).toLocaleString(undefined, { maximumFractionDigits: 0 }) }}
+                </template>
+              </span>
               <span v-else>❇❇</span>
             </td>
             <td :class="quotes[stock.code]?.changeAmount >= 0 ? 'red' : 'green'">
@@ -687,7 +732,7 @@ onUnmounted(() => {
 .stock-table {
   width: 100%;
   border-collapse: collapse;
-  text-align: right;
+  text-align: left;
 }
 
 .stock-table th,
@@ -705,6 +750,7 @@ onUnmounted(() => {
 .stock-table th:first-child,
 .stock-table td:first-child,
 .stock-table td:nth-child(2),
+.stock-table td:nth-child(5),
 .stock-table td:last-child {
   text-align: center;
 }
