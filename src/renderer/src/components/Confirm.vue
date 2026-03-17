@@ -33,13 +33,13 @@ defineExpose({ open })
   <Teleport to="body">
     <div v-if="isVisible" class="confirm-overlay" @click.self="handleCancel">
       <div class="confirm-content">
-        <div class="confirm-header">{{ confirmTitle }}</div>
+        <div class="confirm-header">
+          <span class="confirm-btn-icon cancel" @click="handleCancel" title="取消">❌</span>
+          <span class="confirm-title">{{ confirmTitle }}</span>
+          <span class="confirm-btn-icon confirm" @click="handleConfirm" title="确定">✅</span>
+        </div>
         <div class="confirm-body">
           <p class="confirm-msg">{{ confirmMessage }}</p>
-        </div>
-        <div class="confirm-footer">
-          <button class="confirm-btn-base cancel-btn" @click="handleCancel">取消</button>
-          <button class="confirm-btn-base confirm-btn" @click="handleConfirm">确定</button>
         </div>
       </div>
     </div>
@@ -53,75 +53,58 @@ defineExpose({ open })
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000; /* 确保在 Modal 之上或同级 */
+  z-index: 10000;
   animation: confirmFadeIn 0.2s ease-out;
 }
 
 .confirm-content {
   background-color: #1a1c26;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  width: 240px;
-  padding: 16px;
+  border-radius: 10px;
+  width: 220px;
+  padding: 8px 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   animation: confirmSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .confirm-header {
-  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
   font-weight: bold;
-  margin-bottom: 12px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
   color: #fff;
-  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.confirm-btn-icon {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 14px;
+}
+
+.confirm-btn-icon:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .confirm-msg {
-  font-size: 13px;
+  font-size: 11px;
   color: #ccc;
-  margin-bottom: 20px;
   text-align: center;
   line-height: 1.5;
-}
-
-.confirm-footer {
-  display: flex;
-  gap: 10px;
-}
-
-.confirm-btn-base {
-  flex: 1;
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  border: 1px solid #3a3d4a;
-  transition: all 0.2s;
-}
-
-.cancel-btn {
-  background-color: transparent;
-  color: #aaa;
-}
-
-.cancel-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: #fff;
-}
-
-.confirm-btn {
-  background-color: #ff4d4f; /* 删除确认通常用红色 */
-  border-color: #ff4d4f;
-  color: #fff;
-}
-
-.confirm-btn:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+  margin: 4px 0;
 }
 
 @keyframes confirmSlideUp {

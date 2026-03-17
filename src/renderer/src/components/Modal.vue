@@ -60,13 +60,14 @@ defineExpose({ open })
   <Teleport to="body">
     <div v-if="isVisible" class="modal-overlay" @click.self="handleCancel">
       <div class="modal-content">
-        <div class="modal-header">{{ modalTitle }}</div>
+        <div class="modal-header">
+          <span class="modal-btn" @click="handleCancel">❌</span>
+          <span>{{ modalTitle }}</span>
+          <span class="modal-btn" @click="handleConfirm">✔️</span>
+        </div>
         <div class="modal-body">
-          <p v-if="modalMessage" class="modal-msg">{{ modalMessage }}</p>
-          
           <div class="modal-form">
             <div class="modal-input-group">
-              <label>{{ modalType === 'add' ? '初始成本' : '成交价格' }}</label>
               <input 
                 type="number" 
                 v-model.number="tradePrice" 
@@ -75,9 +76,9 @@ defineExpose({ open })
                 ref="priceInput"
                 @keyup.enter="handleConfirm"
               />
+              <label>{{ modalType === 'add' ? '初始成本' : '成交价格' }}</label>
             </div>
             <div class="modal-input-group">
-              <label>{{ modalType === 'add' ? '持仓手数 (1手=100股)' : '变动手数 (正加负减)' }}</label>
               <input 
                 type="number" 
                 v-model.number="amount" 
@@ -85,12 +86,11 @@ defineExpose({ open })
                 ref="qtyInput"
                 @keyup.enter="handleConfirm"
               />
+              <label>{{ modalType === 'add' ? '手数(1手=100股)' : '变动手数' }}</label>
             </div>
+
+            <p v-if="modalMessage" class="modal-msg">{{ modalMessage }}</p>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button class="modal-btn cancel-btn" @click="handleCancel">取消</button>
-          <button class="modal-btn confirm-btn" @click="handleConfirm">确定</button>
         </div>
       </div>
     </div>
@@ -104,7 +104,6 @@ defineExpose({ open })
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -116,38 +115,55 @@ defineExpose({ open })
 .modal-content {
   background-color: #1a1c26;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  width: 260px;
-  padding: 16px;
+  border-radius: 10px;
+  width: 210px; /* Shrunk from 260px */
+  padding: 8px 12px; /* Shrunk from 16px */
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modal-header {
-  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
   font-weight: bold;
-  margin-bottom: 12px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
   color: #fff;
-  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-btn {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.modal-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .modal-msg {
-  font-size: 12px;
+  font-size: 11px;
   color: #aaa;
-  margin-bottom: 15px;
-  text-align: center;
+  text-align: left;
 }
 
 .modal-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 8px; /* Shrunk from 12px */
 }
 
 .modal-input-group {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 5px;
 }
 
@@ -157,53 +173,19 @@ defineExpose({ open })
 }
 
 .modal-input {
+  width: 90px;
   background-color: #242736;
   border: 1px solid #3a3d4a;
-  border-radius: 6px;
+  border-radius: 4px; /* Shrunk from 6px */
   color: #fff;
-  padding: 8px 10px;
+  padding: 6px 8px; /* Shrunk from 8px 10px */
   outline: none;
-  font-size: 14px;
+  font-size: 12px; /* Shrunk from 14px */
 }
 
 .modal-input:focus {
   border-color: #2ecc71; /* 使用应用绿 */
   background-color: #2a2e42;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 10px;
-}
-
-.modal-btn {
-  flex: 1;
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  border: 1px solid #3a3d4a;
-  transition: all 0.2s;
-}
-
-.cancel-btn {
-  background-color: transparent;
-  color: #aaa;
-}
-
-.cancel-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.confirm-btn {
-  background-color: #2ecc71;
-  border-color: #2ecc71;
-  color: #fff;
-}
-
-.confirm-btn:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
 }
 
 @keyframes modalSlideUp {

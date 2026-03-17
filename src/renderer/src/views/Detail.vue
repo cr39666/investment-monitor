@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import DragHandle from '../components/DragHandle.vue'
 import Modal from '../components/Modal.vue'
@@ -105,15 +105,18 @@ const toggleCensor = () => {
   isCensored.value = !isCensored.value
 }
 
-// 选中的行代码
-const selectedRowCode = ref<string | null>(null)
+// 选中的行代码（多选）
+const selectedCodes = ref<string[]>([])
 const toggleRowSelection = (code: string) => {
-  if (selectedRowCode.value === code) {
-    selectedRowCode.value = null
+  const index = selectedCodes.value.indexOf(code)
+  if (index > -1) {
+    selectedCodes.value.splice(index, 1)
   } else {
-    selectedRowCode.value = code
+    selectedCodes.value.push(code)
   }
 }
+
+
 
 // --- 组件引用 ---
 const modalRef = ref<InstanceType<typeof Modal> | null>(null)
@@ -183,7 +186,7 @@ const addStock = async () => {
   const quote = quotes.value[code]
   const defaultPrice = quote?.currentPrice || 0
 
-  const res = await modalRef.value?.open('add', '添加持仓', `请输入股票 ${code} 的初始仓位：`, {
+  const res = await modalRef.value?.open('add', '添加持仓', `请输入股票 ${code} 的初始仓位`, {
     price: defaultPrice,
     amount: 1
   })
@@ -234,24 +237,29 @@ const fetchQuotesByCode = (code: string) => {
   })
 }
 
-// 移除股票
-const removeStock = async (code: string) => {
-  const confirmed = await confirmRef.value?.open('删除股票', `确定要从自选列表中删除这只股票吗？`)
-  if (confirmed) {
-    stocks.value = stocks.value.filter((s) => s.code !== code)
-    saveStocks()
-    toastRef.value?.show('Stock Removed', 'info')
-  }
-}
-
-// 清空所有股票
-const clearAllStocks = async () => {
-  if (stocks.value.length === 0) return
-  const confirmed = await confirmRef.value?.open('清空列表', '确定要清空自选列表中的所有股票吗？')
-  if (confirmed) {
-    stocks.value = []
-    saveStocks()
-    toastRef.value?.show('All Stocks Cleared', 'warn')
+// 移除/清空股票逻辑
+const handleDeleteAction = async () => {
+  if (selectedCodes.value.length > 0) {
+    // 批量删除已选项
+    const confirmed = await confirmRef.value?.open(
+      '删除股票', 
+      `确定要删除选中的 ${selectedCodes.value.length} 只股票吗？`
+    )
+    if (confirmed) {
+      stocks.value = stocks.value.filter((s) => !selectedCodes.value.includes(s.code))
+      selectedCodes.value = []
+      saveStocks()
+      toastRef.value?.show('Selected Stocks Removed', 'info')
+    }
+  } else {
+    // 清空所有股票（原逻辑）
+    if (stocks.value.length === 0) return
+    const confirmed = await confirmRef.value?.open('清空列表', '确定要清空列表中的所有股票吗？')
+    if (confirmed) {
+      stocks.value = []
+      saveStocks()
+      toastRef.value?.show('All Stocks Cleared', 'warn')
+    }
   }
 }
 
@@ -263,7 +271,7 @@ const adjustStockFlow = async (stock: StockItem) => {
   const res = await modalRef.value?.open(
     'transaction', 
     '调仓确认', 
-    `请输入加/减仓数量（正数为买入，负数为卖出）及成交价格：`, 
+    `加/减仓: 正数为买入，负数为卖出`, 
     { price: currentPrice, amount: 0 }
   )
 
@@ -341,6 +349,16 @@ const fetchQuotes = () => {
   document.body.appendChild(script)
 }
 
+// 通用窗口尺寸同步：测量容器实际尺寸并通知主进程
+const syncWindowSize = () => {
+  if (!containerRef.value) return
+  const rect = containerRef.value.getBoundingClientRect()
+  // 加上外边距的补偿 (20px * 2)
+  const width = Math.ceil(rect.width) + 40
+  const height = Math.ceil(rect.height) + 40
+  window.electron.ipcRenderer.send('resize-window', width, height)
+}
+
 // 计算某只股票的当日盈亏 = (现价 - 昨收) * 股数
 const calculateDailyPnl = (stock: StockItem): number => {
   const quote = quotes.value[stock.code]
@@ -369,6 +387,29 @@ const totalHoldingPnl = computed(() => {
   }, 0)
 })
 
+onMounted(async () => {
+  loadStocks()
+  fetchQuotes()
+  timer = setInterval(fetchQuotes, 1000)
+
+  // 等待 Vue DOM 更新完毕后再测量，避免拿到未渲染完成的尺寸
+  await nextTick()
+
+  if (containerRef.value) {
+    // 初始同步一次窗口尺寸
+    syncWindowSize()
+
+    // 延迟再同步一次作为安全网（JSONP 数据加载后表格高度可能变化）
+    setTimeout(syncWindowSize, 300)
+
+    resizeObserver = new ResizeObserver(() => {
+      // rAF 确保在浏览器完成布局/绘制后再读取尺寸
+      requestAnimationFrame(syncWindowSize)
+    })
+    resizeObserver.observe(containerRef.value)
+  }
+})
+
 const goBack = () => {
   // 返回时缩小到球大小
   window.electron.ipcRenderer.send('resize-window', 60, 60)
@@ -379,32 +420,6 @@ const goHome = () => {
   // 跳转后由 Home.vue 的 ResizeObserver 精确调整
   router.push('/home')
 }
-
-onMounted(() => {
-  loadStocks()
-  fetchQuotes()
-  // 每 3 秒刷新一次
-  timer = setInterval(fetchQuotes, 1000)
-
-  // 监听内容高度变化并调整窗口大小
-  if (containerRef.value) {
-    // 1. 立即获取初始尺寸并调整，避免切换时的“旧尺寸”瞬间残影
-    const initialRect = containerRef.value.getBoundingClientRect()
-    window.electron.ipcRenderer.send('resize-window', Math.ceil(initialRect.width), Math.ceil(initialRect.height))
-
-    resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        // 使用 getBoundingClientRect 获取精确的物理尺寸
-        const rect = entry.target.getBoundingClientRect()
-        // 增加 1px 的 buffer 补偿，防止某些渲染倍数下边框在高分屏被裁切或产生锯齿
-        const width = Math.ceil(rect.width) + 1
-        const height = Math.ceil(rect.height) + 1
-        window.electron.ipcRenderer.send('resize-window', width, height)
-      }
-    })
-    resizeObserver.observe(containerRef.value)
-  }
-})
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
@@ -442,10 +457,8 @@ onUnmounted(() => {
           <tr 
             v-for="stock in displayStocks" 
             :key="stock.code"
-            :class="{ 'row-selected': selectedRowCode === stock.code }"
+            :class="{ 'row-selected': selectedCodes.includes(stock.code) }"
             @click="toggleRowSelection(stock.code)"
-            @contextmenu.prevent="removeStock(stock.code)"
-            title="Right click to remove stock"
           >
             <td :class="['name-cell', quotes[stock.code]?.changeAmount >= 0 ? 'red' : 'green']">
               <template v-if="!isCensored">
@@ -506,7 +519,7 @@ onUnmounted(() => {
             </td>
           </tr>
           <tr v-if="stocks.length === 0">
-            <td colspan="6" class="empty-row">no stocks</td>
+            <td colspan="7" class="empty-row">no stocks</td>
           </tr>
         </tbody>
       </table>
@@ -550,10 +563,10 @@ onUnmounted(() => {
       <button 
         v-if="stocks.length > 0"
         class="clear-all-btn" 
-        @click="clearAllStocks" 
-        title="Clear All Stocks"
+        @click="handleDeleteAction" 
+        :title="selectedCodes.length > 0 ? 'Delete Selected' : 'Clear All'"
       >
-        <span class="clear-all-icon">🧹</span>
+        <span class="clear-all-icon">{{ selectedCodes.length > 0 ? '🗑️' : '🧹' }}</span>
       </button>
     </div>
 
@@ -570,7 +583,7 @@ onUnmounted(() => {
 
 <style scoped>
 .detail-container {
-  margin: 0; /* 确保无外边距 */
+  margin: 20px; /* 留出足够的空间显示阴影 */
   padding: 0 10px 10px 10px; /* Top padding 0 for drag handle */
   color: #fff;
   min-height: 100px;
@@ -791,6 +804,14 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.row-selected {
+  background-color: rgba(46, 204, 113, 0.15) !important;
+}
+
+.row-selected td {
+  border-bottom-color: rgba(46, 204, 113, 0.3);
+}
+
 .clickable-th:hover {
   color: #fff !important;
 }
@@ -817,6 +838,7 @@ onUnmounted(() => {
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  margin-left: 8px;
   padding: 3px 2px;
   display: flex;
   align-items: center;
@@ -848,7 +870,7 @@ onUnmounted(() => {
   gap: 6px;
   align-items: center;
   justify-content: flex-end;
-  margin: 0 8px;
+  margin-left: 8px;
   cursor: pointer;
   padding: 1px 6px;
   border-radius: 6px;

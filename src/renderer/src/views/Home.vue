@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Versions from '../components/Versions.vue'
 import DragHandle from '../components/DragHandle.vue'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -21,18 +21,31 @@ const backToBall = () => {
   router.push('/')
 }
 
-onMounted(() => {
+// 通用窗口尺寸同步：测量容器实际尺寸并通知主进程
+const syncWindowSize = () => {
+  if (!containerRef.value) return
+  const rect = containerRef.value.getBoundingClientRect()
+  // 增加到 4px 的 buffer，确保投影和边框在各种缩放倍率下都不被裁切
+  const width = Math.ceil(rect.width) + 4
+  const height = Math.ceil(rect.height) + 4
+  window.electron.ipcRenderer.send('resize-window', width, height)
+}
+
+onMounted(async () => {
+  // 等待 Vue DOM 更新完毕后再测量
+  await nextTick()
+
   // 监听内容高度变化并调整窗口大小
   if (containerRef.value) {
-    resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        // 使用 getBoundingClientRect 获取精确的物理尺寸
-        const rect = entry.target.getBoundingClientRect()
-        const width = Math.ceil(rect.width)
-        const height = Math.ceil(rect.height)
-        // 发送精确尺寸到主进程，不再额外加偏移量，彻底消除透明边框
-        window.electron.ipcRenderer.send('resize-window', width, height)
-      }
+    // 1. nextTick 之后立即同步一次窗口尺寸
+    syncWindowSize()
+
+    // 2. 延迟再同步一次，作为安全网
+    setTimeout(syncWindowSize, 300)
+
+    resizeObserver = new ResizeObserver(() => {
+      // 使用 rAF 确保在浏览器完成布局/绘制后再读取尺寸
+      requestAnimationFrame(syncWindowSize)
     })
     resizeObserver.observe(containerRef.value)
   }
