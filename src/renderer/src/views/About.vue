@@ -18,6 +18,23 @@ const backToBall = () => {
   router.push('/ball')
 }
 
+// === 更新逻辑 ===
+const updateStatus = ref<'idle' | 'checking' | 'available' | 'downloading' | 'ready'>('idle')
+const updateMessage = ref('')
+const downloadProgress = ref(0)
+const versionInfo = ref('')
+
+const checkForUpdates = () => {
+  if (updateStatus.value === 'checking' || updateStatus.value === 'downloading') return
+  updateStatus.value = 'checking'
+  updateMessage.value = 'Checking...'
+  window.electron.ipcRenderer.send('check-for-update')
+}
+
+const installUpdate = () => {
+  window.electron.ipcRenderer.send('quit-and-install')
+}
+
 // 通用窗口尺寸同步：测量容器实际尺寸并通知主进程
 const syncWindowSize = () => {
   if (!containerRef.value) return
@@ -29,6 +46,43 @@ const syncWindowSize = () => {
 }
 
 onMounted(async () => {
+  // 监听更新事件
+  window.electron.ipcRenderer.on('update-available', (_event, info: any) => {
+    updateStatus.value = 'available'
+    versionInfo.value = info?.version || ''
+    updateMessage.value = 'New version available'
+    window.electron.ipcRenderer.send('download-update')
+    updateStatus.value = 'downloading'
+    updateMessage.value = 'Downloading...'
+  })
+
+  window.electron.ipcRenderer.on('update-not-available', () => {
+    updateStatus.value = 'idle'
+    updateMessage.value = 'Up to date'
+    setTimeout(() => {
+      if (updateStatus.value === 'idle') updateMessage.value = ''
+    }, 3000)
+  })
+
+  window.electron.ipcRenderer.on('update-error', (_event, err) => {
+    updateStatus.value = 'idle'
+    updateMessage.value = typeof err === 'string' ? err : 'Update error'
+    setTimeout(() => {
+      if (updateStatus.value === 'idle') updateMessage.value = ''
+    }, 3000)
+  })
+
+  window.electron.ipcRenderer.on('download-progress', (_event, progressObj: any) => {
+    updateStatus.value = 'downloading'
+    downloadProgress.value = Math.round(progressObj.percent || 0)
+    updateMessage.value = `Downloading... ${downloadProgress.value}%`
+  })
+
+  window.electron.ipcRenderer.on('update-downloaded', () => {
+    updateStatus.value = 'ready'
+    updateMessage.value = 'Ready to install'
+  })
+
   // 等待 Vue DOM 更新完毕后再测量
   await nextTick()
 
@@ -50,6 +104,11 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (resizeObserver) resizeObserver.disconnect()
+  window.electron.ipcRenderer.removeAllListeners('update-available')
+  window.electron.ipcRenderer.removeAllListeners('update-not-available')
+  window.electron.ipcRenderer.removeAllListeners('update-error')
+  window.electron.ipcRenderer.removeAllListeners('download-progress')
+  window.electron.ipcRenderer.removeAllListeners('update-downloaded')
 })
 </script>
 
@@ -71,7 +130,24 @@ onUnmounted(() => {
       </div>
     </div>
     <div class="version-container">
-      <span class="app-version">v{{ version }}</span>
+      <span 
+        class="app-version" 
+        @click="checkForUpdates"
+        title="Check for updates"
+      >
+        v{{ version }} 
+        <span class="update-icon">↻</span>
+      </span>
+      <div v-if="updateMessage || updateStatus !== 'idle'" class="update-section">
+        <span class="update-msg" v-if="updateMessage">{{ updateMessage }}</span>
+        <button 
+          v-if="updateStatus === 'ready'" 
+          class="install-btn" 
+          @click="installUpdate"
+        >
+          Install
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -134,12 +210,77 @@ onUnmounted(() => {
 
 .version-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 6px;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.6);
   font-family: inherit;
   margin: 0;
   padding: 0;
+}
+
+.app-version {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background-color: rgba(255, 255, 255, 0.08); /* 淡淡的底色 */
+  border-radius: 14px; /* 圆角胶囊形状 */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.app-version:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+}
+
+.update-icon {
+  font-size: 14px;
+  opacity: 0.8;
+  display: inline-block;
+  transition: transform 0.4s ease;
+}
+
+.app-version:hover .update-icon {
+  opacity: 1;
+}
+
+.app-version:active .update-icon {
+  transform: rotate(180deg);
+}
+
+.update-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 20px;
+}
+
+.update-msg {
+  font-size: 11px;
+  color: var(--ev-c-green);
+  opacity: 0.8;
+}
+
+.install-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #2ecc71;
+  background: rgba(46, 204, 113, 0.2);
+  cursor: pointer;
+  color: #2ecc71;
+  transition: all 0.2s;
+}
+
+.install-btn:hover {
+  background: rgba(46, 204, 113, 0.4);
 }
 </style>

@@ -1,7 +1,10 @@
 import { app, shell, BrowserWindow, ipcMain, Tray, Menu, globalShortcut } from 'electron'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
+import { autoUpdater } from 'electron-updater'
 
+// 初始化自更新器，禁用自动下载（由用户主导）
+autoUpdater.autoDownload = false
 let tray: Tray | null = null
 let mainWindow: BrowserWindow | null = null
 let currentHotkey: string = ''
@@ -202,6 +205,40 @@ app.whenReady().then(() => {
     if (browserWindow) {
       browserWindow.setPosition(Math.round(screenX - offsetX), Math.round(screenY - offsetY))
     }
+  })
+
+  // === 自动更新 IPC 处理 ===
+  ipcMain.on('check-for-update', () => {
+    if (!app.isPackaged) {
+      // 本地开发环境无法真正更新
+      mainWindow?.webContents.send('update-error', 'Cannot update in development mode')
+      return
+    }
+    autoUpdater.checkForUpdates()
+  })
+
+  ipcMain.on('download-update', () => {
+    autoUpdater.downloadUpdate()
+  })
+
+  ipcMain.on('quit-and-install', () => {
+    autoUpdater.quitAndInstall()
+  })
+
+  autoUpdater.on('error', (info) => {
+    mainWindow?.webContents.send('update-error', info)
+  })
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update-available', info)
+  })
+  autoUpdater.on('update-not-available', (info) => {
+    mainWindow?.webContents.send('update-not-available', info)
+  })
+  autoUpdater.on('download-progress', (progressObj) => {
+    mainWindow?.webContents.send('download-progress', progressObj)
+  })
+  autoUpdater.on('update-downloaded', (info) => {
+    mainWindow?.webContents.send('update-downloaded', info)
   })
 
   app.on('activate', function () {
