@@ -6,12 +6,12 @@ import Setting from '../views/Setting.vue'
 
 const routes = [
   {
-    path: '/',
+    path: '/ball',
     name: 'FloatingBall',
     component: FloatingBall
   },
   {
-    path: '/main-list',
+    path: '/',
     name: 'MainList',
     component: MainList
   },

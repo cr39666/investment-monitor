@@ -58,9 +58,8 @@ onMounted(() => {
 
 const goToDetail = () => {
   if (isDragging.value) return // 如果是拖拽结束，不触发点击
-  // 展开时调整窗口大小并跳转
-  window.electron.ipcRenderer.send('resize-window', 480, 400)
-  router.push('/main-list')
+  // 点击后切换路由到列表页，然后在主进程通知放大窗口
+  router.push('/')
 }
 </script>
 

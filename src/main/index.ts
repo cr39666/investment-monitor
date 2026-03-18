@@ -26,7 +26,7 @@ function toggleMainWindow(): void {
 
   if (isWindowMode && mainWindow.isVisible()) {
     // 如果是窗口界面且可见，则切换回悬浮球
-    mainWindow.webContents.send('navigate', '/')
+    mainWindow.webContents.send('navigate', '/ball')
     mainWindow.setResizable(true)
     mainWindow.setContentSize(80, 80)
     mainWindow.setResizable(false)
@@ -34,7 +34,7 @@ function toggleMainWindow(): void {
     applyAlwaysOnTop(80, 80)
   } else {
     // 否则展开为窗口界面
-    mainWindow.webContents.send('navigate', '/main-list')
+    mainWindow.webContents.send('navigate', '/')
     mainWindow.show()
     mainWindow.setSkipTaskbar(false)
     mainWindow.setResizable(true)
@@ -65,15 +65,15 @@ function registerHotkey(hotkey: string): void {
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 60,
-    height: 60,
+    width: 400,
+    height: 600,
     center: false,
     show: false,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    skipTaskbar: true,
+    skipTaskbar: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -104,7 +104,7 @@ function createTray(): void {
     {
       label: 'Open Watcher',
       click: () => {
-        mainWindow?.webContents.send('navigate', '/main-list')
+        mainWindow?.webContents.send('navigate', '/')
         mainWindow?.setSkipTaskbar(false)
         mainWindow?.setResizable(true)
         mainWindow?.setContentSize(400, 600)
@@ -116,7 +116,7 @@ function createTray(): void {
     {
       label: 'Open Ball',
       click: () => {
-        mainWindow?.webContents.send('navigate', '/')
+        mainWindow?.webContents.send('navigate', '/ball')
         mainWindow?.setResizable(true)
         mainWindow?.setContentSize(80, 80)
         mainWindow?.setResizable(false)

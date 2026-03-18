@@ -15,7 +15,7 @@ let resizeObserver: ResizeObserver | null = null
 const backToBall = () => {
   // 返回悬浮球形态
   window.electron.ipcRenderer.send('resize-window', 60, 60)
-  router.push('/')
+  router.push('/ball')
 }
 
 // 通用窗口尺寸同步：测量容器实际尺寸并通知主进程

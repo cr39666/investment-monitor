@@ -453,7 +453,7 @@ onMounted(async () => {
 const goBack = () => {
   // 返回时缩小到球大小
   window.electron.ipcRenderer.send('resize-window', 60, 60)
-  router.push('/')
+  router.push('/ball')
 }
 
 const goToSetting = () => {

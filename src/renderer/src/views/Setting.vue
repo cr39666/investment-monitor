@@ -70,7 +70,7 @@ const toggleWindowAlwaysOnTop = () => {
 }
 
 const goBack = () => {
-  router.push('/main-list')
+  router.push('/')
 }
 
 const goToAbout = () => {
@@ -134,7 +134,7 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="setting-item hotkey-item">
-        <span class="label">Toggle Window Hotkey</span>
+        <span class="label">Display/Hide Window Hotkey</span>
         <div class="hotkey-display" :class="{ recording: isRecording }" @click="startRecording">
           {{ isRecording ? 'Press keys...' : globalHotkey }}
         </div>
