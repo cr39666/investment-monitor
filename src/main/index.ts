@@ -48,7 +48,7 @@ function registerHotkey(hotkey: string): void {
   if (currentHotkey) {
     globalShortcut.unregister(currentHotkey)
   }
-  
+
   if (!hotkey) return
 
   try {
@@ -101,8 +101,8 @@ function createWindow(): void {
 function createTray(): void {
   tray = new Tray(icon)
   const contextMenu = Menu.buildFromTemplate([
-    { 
-      label: 'Open Watcher', 
+    {
+      label: 'Open Watcher',
       click: () => {
         mainWindow?.webContents.send('navigate', '/main-list')
         mainWindow?.setSkipTaskbar(false)
@@ -111,10 +111,10 @@ function createTray(): void {
         mainWindow?.setResizable(false)
         applyAlwaysOnTop(400, 600)
         mainWindow?.show()
-      } 
+      }
     },
-    { 
-      label: 'Open Ball', 
+    {
+      label: 'Open Ball',
       click: () => {
         mainWindow?.webContents.send('navigate', '/')
         mainWindow?.setResizable(true)
@@ -123,15 +123,15 @@ function createTray(): void {
         mainWindow?.setSkipTaskbar(true)
         applyAlwaysOnTop(80, 80)
         mainWindow?.show()
-      } 
+      }
     },
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() }
   ])
-  
+
   tray.setToolTip('Stock Watcher')
   tray.setContextMenu(contextMenu)
-  
+
   tray.on('click', () => {
     if (mainWindow) {
       if (mainWindow.isVisible()) {
@@ -186,7 +186,7 @@ app.whenReady().then(() => {
   ipcMain.on('set-always-on-top-config', (_event, config: { ball: boolean; window: boolean }) => {
     ballAlwaysOnTop = config.ball
     windowAlwaysOnTop = config.window
-    
+
     if (mainWindow) {
       const [w, h] = mainWindow.getContentSize()
       applyAlwaysOnTop(w, h)

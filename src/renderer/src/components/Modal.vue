@@ -68,10 +68,10 @@ defineExpose({ open })
         <div class="modal-body">
           <div class="modal-form">
             <div class="modal-input-group">
-              <input 
-                type="number" 
-                v-model.number="tradePrice" 
-                class="modal-input" 
+              <input
+                type="number"
+                v-model.number="tradePrice"
+                class="modal-input"
                 step="0.001"
                 ref="priceInput"
                 @keyup.enter="handleConfirm"
@@ -79,10 +79,10 @@ defineExpose({ open })
               <label>{{ modalType === 'add' ? '初始成本' : '成交价格' }}</label>
             </div>
             <div class="modal-input-group">
-              <input 
-                type="number" 
-                v-model.number="amount" 
-                class="modal-input" 
+              <input
+                type="number"
+                v-model.number="amount"
+                class="modal-input"
                 ref="qtyInput"
                 @keyup.enter="handleConfirm"
               />
@@ -189,12 +189,22 @@ defineExpose({ open })
 }
 
 @keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

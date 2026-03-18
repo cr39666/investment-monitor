@@ -21,7 +21,7 @@ const startRecording = () => {
 const handleKeyDown = (e: KeyboardEvent) => {
   if (!isRecording.value) return
   e.preventDefault()
-  
+
   // 忽略单独的控制键
   if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
 
@@ -33,10 +33,10 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
   const key = e.key.toUpperCase()
   const combination = [...modifiers, key].join('+')
-  
+
   globalHotkey.value = combination
   isRecording.value = false
-  
+
   localStorage.setItem('global_hotkey', combination)
   window.electron.ipcRenderer.send('set-global-hotkey', combination)
 }
@@ -123,31 +123,19 @@ onUnmounted(() => {
     <div class="setting-content">
       <div class="setting-item">
         <span class="label">Ball Always on Top</span>
-        <div 
-          class="switch" 
-          :class="{ active: ballAlwaysOnTop }"
-          @click="toggleBallAlwaysOnTop"
-        >
+        <div class="switch" :class="{ active: ballAlwaysOnTop }" @click="toggleBallAlwaysOnTop">
           <div class="handle"></div>
         </div>
       </div>
       <div class="setting-item">
         <span class="label">Window Always on Top</span>
-        <div 
-          class="switch" 
-          :class="{ active: windowAlwaysOnTop }"
-          @click="toggleWindowAlwaysOnTop"
-        >
+        <div class="switch" :class="{ active: windowAlwaysOnTop }" @click="toggleWindowAlwaysOnTop">
           <div class="handle"></div>
         </div>
       </div>
       <div class="setting-item hotkey-item">
         <span class="label">Toggle Window Hotkey</span>
-        <div 
-          class="hotkey-display" 
-          :class="{ recording: isRecording }"
-          @click="startRecording"
-        >
+        <div class="hotkey-display" :class="{ recording: isRecording }" @click="startRecording">
           {{ isRecording ? 'Press keys...' : globalHotkey }}
         </div>
       </div>
@@ -183,9 +171,15 @@ onUnmounted(() => {
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .setting-container {

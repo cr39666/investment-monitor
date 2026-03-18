@@ -49,7 +49,7 @@ const toggleSort = (column: string) => {
     if (sortOrder.value === 'asc') sortOrder.value = 'desc'
     else if (sortOrder.value === 'desc') sortOrder.value = 'none'
     else sortOrder.value = 'asc'
-    
+
     if (sortOrder.value === 'none') sortColumn.value = null
   } else {
     sortColumn.value = column
@@ -60,7 +60,7 @@ const toggleSort = (column: string) => {
 // 实际显示的经过排序的股票列表
 const displayStocks = computed(() => {
   const list = [...stocks.value]
-  
+
   // 第一优先级：手动选择的列排序
   if (sortColumn.value && sortOrder.value !== 'none') {
     return list.sort((a, b) => {
@@ -68,7 +68,7 @@ const displayStocks = computed(() => {
       let valB: number = 0
       const qA = quotes.value[a.code]
       const qB = quotes.value[b.code]
-      
+
       switch (sortColumn.value) {
         case 'curPrice':
           valA = qA?.currentPrice || 0
@@ -90,7 +90,7 @@ const displayStocks = computed(() => {
       return sortOrder.value === 'asc' ? valA - valB : valB - valA
     })
   }
-  
+
   // 默认排序：按名称拼音首字母正序
   return list.sort((a, b) => {
     const nameA = quotes.value[a.code]?.name || a.code
@@ -121,8 +121,6 @@ const toggleRowSelection = (code: string) => {
     selectedCodes.value.push(code)
   }
 }
-
-
 
 // --- 组件引用 ---
 const modalRef = ref<InstanceType<typeof Modal> | null>(null)
@@ -171,7 +169,12 @@ const addStock = async () => {
 
   // 自动根据6位纯数字代码补齐市场前缀
   if (/^\d{6}$/.test(code)) {
-    if (code.startsWith('6') || code.startsWith('5') || code.startsWith('7') || code.startsWith('9')) {
+    if (
+      code.startsWith('6') ||
+      code.startsWith('5') ||
+      code.startsWith('7') ||
+      code.startsWith('9')
+    ) {
       code = 'sh' + code
     } else if (code.startsWith('0') || code.startsWith('1') || code.startsWith('3')) {
       code = 'sz' + code
@@ -198,11 +201,11 @@ const addStock = async () => {
   })
 
   if (res?.confirmed) {
-    stocks.value.push({ 
-      code, 
-      cost: res.price, 
+    stocks.value.push({
+      code,
+      cost: res.price,
       amount: res.amount,
-      isNew: false 
+      isNew: false
     })
     saveStocks()
     inputCode.value = ''
@@ -248,7 +251,7 @@ const handleDeleteAction = async () => {
   if (selectedCodes.value.length > 0) {
     // 批量删除已选项
     const confirmed = await confirmRef.value?.open(
-      '删除股票', 
+      '删除股票',
       `确定要删除选中的 ${selectedCodes.value.length} 只股票吗？`
     )
     if (confirmed) {
@@ -273,11 +276,11 @@ const handleDeleteAction = async () => {
 const adjustStockFlow = async (stock: StockItem) => {
   const quote = quotes.value[stock.code]
   const currentPrice = quote?.currentPrice || stock.cost || 0
-  
+
   const res = await modalRef.value?.open(
-    'transaction', 
-    '调仓确认', 
-    `加/减仓: 正数为买入，负数为卖出`, 
+    'transaction',
+    '调仓确认',
+    `加/减仓: 正数为买入，负数为卖出`,
     { price: currentPrice, amount: 0 }
   )
 
@@ -312,23 +315,23 @@ const isTradingTime = () => {
   const day = now.getDay()
   const hours = now.getHours()
   const minutes = now.getMinutes()
-  
+
   // 周六周日不交易
   if (day === 0 || day === 6) return false
-  
+
   const timeNum = hours * 100 + minutes
-  
+
   // A 股交易时间：09:15 - 11:30, 13:00 - 15:00
   const isMorning = timeNum >= 915 && timeNum <= 1130
   const isAfternoon = timeNum >= 1300 && timeNum <= 1500
-  
+
   return isMorning || isAfternoon
 }
 
 // 获取行情数据 (使用 JSONP 注入 script 标签，解决 GBK 编码跨域)
 const fetchQuotes = (force = false) => {
   if (stocks.value.length === 0) return
-  
+
   // 非交易时间且非强制刷新(初始化)时，跳过请求
   if (!force && !isTradingTime()) {
     return
@@ -398,7 +401,7 @@ const calculateDailyPnl = (stock: StockItem): number => {
 
 // 计算某只股票的持仓总盈亏 = (现价 - 均摊成本) * 股数
 // 只有在填写了成本价时才有效
-const calculateTotalPnl = (stock: StockItem): number|null => {
+const calculateTotalPnl = (stock: StockItem): number | null => {
   const quote = quotes.value[stock.code]
   if (!quote || stock.cost <= 0) return null
   return (quote.currentPrice - stock.cost) * stock.amount * 100
@@ -470,38 +473,54 @@ onUnmounted(() => {
       <table class="stock-table">
         <thead>
           <tr>
-            <th 
+            <th
               :title="nameDisplayMode === 0 ? '名称 (Name)' : '代码 (Code)'"
-              @click="toggleNameDisplayMode" 
-              class="clickable-th" 
+              @click="toggleNameDisplayMode"
+              class="clickable-th"
             >
               {{ nameDisplayMode === 0 ? 'Name' : 'Code' }} <span class="toggle-icon">🔁</span>
             </th>
             <th title="当前价 (Current Price)" @click="toggleSort('curPrice')" class="clickable-th">
-              Price <span class="sort-icon">{{ sortColumn === 'curPrice' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
+              Price
+              <span class="sort-icon">{{
+                sortColumn === 'curPrice' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+              }}</span>
             </th>
             <th title="当日盈亏 (Daily Pnl)" @click="toggleSort('dpnl')" class="clickable-th">
-              D.PnL <span class="sort-icon">{{ sortColumn === 'dpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
+              D.PnL
+              <span class="sort-icon">{{
+                sortColumn === 'dpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+              }}</span>
             </th>
             <th title="持仓总盈亏 (Total Pnl)" @click="toggleSort('tpnl')" class="clickable-th">
-              T.PnL <span class="sort-icon">{{ sortColumn === 'tpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
+              T.PnL
+              <span class="sort-icon">{{
+                sortColumn === 'tpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+              }}</span>
             </th>
-            <th 
-              :title="avgDisplayMode === 0 ? '均摊成本/保本价 (Avg. Buy Price)' : '持仓市值 (Market Value)'" 
-              @click="toggleAvgDisplayMode" 
+            <th
+              :title="
+                avgDisplayMode === 0
+                  ? '均摊成本/保本价 (Avg. Buy Price)'
+                  : '持仓市值 (Market Value)'
+              "
+              @click="toggleAvgDisplayMode"
               class="clickable-th"
             >
               {{ avgDisplayMode === 0 ? 'Avg' : 'Val' }} <span class="toggle-icon">🔁</span>
             </th>
             <th title="涨跌幅 (Change)" @click="toggleSort('change')" class="clickable-th">
-              Chg% <span class="sort-icon">{{ sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
+              Chg%
+              <span class="sort-icon">{{
+                sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+              }}</span>
             </th>
             <th title="持仓手数 (Amount)">Qty</th>
           </tr>
         </thead>
         <tbody>
-          <tr 
-            v-for="stock in displayStocks" 
+          <tr
+            v-for="stock in displayStocks"
             :key="stock.code"
             :class="{ 'row-selected': selectedCodes.includes(stock.code) }"
             @click="toggleRowSelection(stock.code)"
@@ -515,7 +534,7 @@ onUnmounted(() => {
                 <div>❇❇</div>
               </template>
             </td>
-            <td 
+            <td
               :class="['price-cell', quotes[stock.code]?.changeAmount >= 0 ? 'red' : 'green']"
               @click.stop="copyPrice(quotes[stock.code]?.currentPrice)"
               title="Click to copy price to clipboard"
@@ -531,7 +550,9 @@ onUnmounted(() => {
             </td>
             <td :class="(calculateTotalPnl(stock) || 0) >= 0 ? 'red' : 'green'">
               <span v-if="!isCensored">
-                {{ calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(1) : '--' }}
+                {{
+                  calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(1) : '--'
+                }}
               </span>
               <span v-else>❇❇</span>
             </td>
@@ -541,7 +562,11 @@ onUnmounted(() => {
                   {{ stock.cost?.toFixed(3) }}
                 </template>
                 <template v-else>
-                  {{ calculateMarketValue(stock).toLocaleString(undefined, { maximumFractionDigits: 0 }) }}
+                  {{
+                    calculateMarketValue(stock).toLocaleString(undefined, {
+                      maximumFractionDigits: 0
+                    })
+                  }}
                 </template>
               </span>
               <span v-else>❇❇</span>
@@ -549,13 +574,18 @@ onUnmounted(() => {
             <td :class="quotes[stock.code]?.changeAmount >= 0 ? 'red' : 'green'">
               <span v-if="!isCensored">
                 <span v-if="quotes[stock.code]">
-                  {{ quotes[stock.code].changeAmount > 0 ? '+' : '' }}{{ quotes[stock.code].changePercent }}%
+                  {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
+                  }}{{ quotes[stock.code].changePercent }}%
                 </span>
                 <span v-else>--</span>
               </span>
               <span v-else>❇❇</span>
             </td>
-            <td @click.stop="adjustStockFlow(stock)" class="clickable-cell" title="Click to adjust quantity">
+            <td
+              @click.stop="adjustStockFlow(stock)"
+              class="clickable-cell"
+              title="Click to adjust quantity"
+            >
               <div v-if="!isCensored" class="clickable-tag">
                 {{ stock.amount }}
               </div>
@@ -574,7 +604,9 @@ onUnmounted(() => {
         <button class="back-btn home-btn" @click="goBack" title="Back to ball">
           <img src="../assets/electron.svg" class="mini-logo" alt="ball" />
         </button>
-        <button class="back-btn home-btn" @click="goToSetting" title="Go to setting page">⚙️</button>
+        <button class="back-btn home-btn" @click="goToSetting" title="Go to setting page">
+          ⚙️
+        </button>
         <div class="input-group">
           <input
             v-model="inputCode"
@@ -586,28 +618,38 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="summary-pnl" title="Toggle Hide Amount" @click="toggleCensor">
-        <span 
-          :class="['visible-summary', totalDailyPnl > 0 ? 'red' : totalDailyPnl < 0 ? 'green' : 'gray']"
+        <span
+          :class="[
+            'visible-summary',
+            totalDailyPnl > 0 ? 'red' : totalDailyPnl < 0 ? 'green' : 'gray'
+          ]"
           title="Daily PnL Total"
         >
           <span class="pnl-label">D:</span>
-          <span v-if="!isCensored">{{ totalDailyPnl > 0 ? '+' : '' }}{{ totalDailyPnl.toFixed(1) }}</span>
+          <span v-if="!isCensored"
+            >{{ totalDailyPnl > 0 ? '+' : '' }}{{ totalDailyPnl.toFixed(1) }}</span
+          >
           <span v-else>❇❇</span>
         </span>
-        <span 
-          :class="['visible-summary', totalHoldingPnl > 0 ? 'red' : totalHoldingPnl < 0 ? 'green' : 'gray']"
+        <span
+          :class="[
+            'visible-summary',
+            totalHoldingPnl > 0 ? 'red' : totalHoldingPnl < 0 ? 'green' : 'gray'
+          ]"
           title="Holding PnL Total"
         >
           <span class="pnl-label">H:</span>
-          <span v-if="!isCensored">{{ totalHoldingPnl > 0 ? '+' : '' }}{{ totalHoldingPnl.toFixed(1) }}</span>
+          <span v-if="!isCensored"
+            >{{ totalHoldingPnl > 0 ? '+' : '' }}{{ totalHoldingPnl.toFixed(1) }}</span
+          >
           <span v-else>❇❇</span>
         </span>
         <span class="lock-icon">{{ isCensored ? '🔒' : '🔓' }}</span>
       </div>
-      <button 
+      <button
         v-if="stocks.length > 0"
-        class="clear-all-btn" 
-        @click="handleDeleteAction" 
+        class="clear-all-btn"
+        @click="handleDeleteAction"
         :title="selectedCodes.length > 0 ? 'Delete Selected' : 'Clear All'"
       >
         <span class="clear-all-icon">{{ selectedCodes.length > 0 ? '🗑️' : '🧹' }}</span>
@@ -785,7 +827,9 @@ onUnmounted(() => {
 
 .step-btn {
   opacity: 0;
-  transition: opacity 0.2s, background-color 0.2s;
+  transition:
+    opacity 0.2s,
+    background-color 0.2s;
   background-color: transparent;
   border: none;
   color: #aaa;
@@ -868,7 +912,8 @@ onUnmounted(() => {
   margin-left: 1px;
 }
 
-.clickable-th:hover .toggle-icon,.clickable-th:hover .sort-icon {
+.clickable-th:hover .toggle-icon,
+.clickable-th:hover .sort-icon {
   opacity: 1;
 }
 
@@ -1021,12 +1066,22 @@ onUnmounted(() => {
 }
 
 @keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

@@ -27,10 +27,14 @@ defineExpose({ show })
 
 const icon = computed(() => {
   switch (toastType.value) {
-    case 'success': return '✅'
-    case 'fail': return '❌'
-    case 'warn': return '⚠️'
-    default: return 'ℹ️'
+    case 'success':
+      return '✅'
+    case 'fail':
+      return '❌'
+    case 'warn':
+      return '⚠️'
+    default:
+      return 'ℹ️'
   }
 })
 

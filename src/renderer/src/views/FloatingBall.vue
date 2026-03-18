@@ -65,7 +65,13 @@ const goToDetail = () => {
 </script>
 
 <template>
-  <div ref="containerRef" class="floating-ball-container" @mousedown="onMouseDown" @click="goToDetail" title="Drag to move, click to show list">
+  <div
+    ref="containerRef"
+    class="floating-ball-container"
+    @mousedown="onMouseDown"
+    @click="goToDetail"
+    title="Drag to move, click to show list"
+  >
     <img src="../assets/electron.svg" class="ball-icon" alt="logo" />
   </div>
 </template>
@@ -92,7 +98,10 @@ const goToDetail = () => {
   filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
   pointer-events: none; /* 让事件穿透到容器 */
   animation: ball-rotate 6s linear infinite;
-  transition: opacity 0.4s ease, filter 0.4s ease, animation-duration 0.6s ease;
+  transition:
+    opacity 0.4s ease,
+    filter 0.4s ease,
+    animation-duration 0.6s ease;
   will-change: transform, opacity, filter;
 }
 

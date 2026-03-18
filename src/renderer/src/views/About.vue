@@ -57,13 +57,18 @@ onUnmounted(() => {
   <div ref="containerRef" class="about-container">
     <DragHandle />
     <div class="main">
-      <img alt="logo" class="logo" src="../assets/electron.svg" @click="backToBall" title="Click to shrink to ball" />
+      <img
+        alt="logo"
+        class="logo"
+        src="../assets/electron.svg"
+        @click="backToBall"
+        title="Click to shrink to ball"
+      />
       <div class="text">
         <span class="vue">A-share</span>
-        market watcher designed by 
+        market watcher designed by
         <span class="ts">Croyell</span>
       </div>
-      <p class="tip">Click the logo above to show <code>the floating ball</code></p>
     </div>
     <div class="version-container">
       <span class="app-version">v{{ version }}</span>
@@ -102,7 +107,9 @@ onUnmounted(() => {
   transform-origin: center;
   scale: 1;
   animation: logo-rotate 6s linear infinite;
-  transition: scale 0.4s ease, animation-duration 0.6s ease;
+  transition:
+    scale 0.4s ease,
+    animation-duration 0.6s ease;
   will-change: transform, scale;
 }
 
@@ -123,12 +130,6 @@ onUnmounted(() => {
 .text {
   font-size: 14px;
   text-align: center;
-}
-
-.tip {
-  font-size: 12px;
-  opacity: 0.7;
-  margin-bottom: 10px;
 }
 
 .version-container {
