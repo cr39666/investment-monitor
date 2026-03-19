@@ -145,7 +145,7 @@ onUnmounted(() => {
   <div ref="containerRef" class="setting-container">
     <DragHandle />
     <div class="setting-header">
-      <span class="back-icon" :title="t('backToHome')" @click="goBack">⬅️</span>
+      <span class="back-icon" :title="t('backToList')" @click="goBack">⬅️</span>
       <span class="title">{{ t('settings') }}</span>
       <span class="about-icon" :title="t('about')" @click="goToAbout">ℹ️</span>
     </div>
@@ -174,6 +174,8 @@ onUnmounted(() => {
       <div class="setting-item">
         <span class="label">{{ t('language') }}</span>
         <div class="lang-select">
+          <span class="lang-option" :class="{ active: locale === 'default' }" @click="changeLanguage('default')">{{ t('default') }}</span>
+          <span class="lang-divider">|</span>
           <span class="lang-option" :class="{ active: locale === 'en' }" @click="changeLanguage('en')">{{ t('english') }}</span>
           <span class="lang-divider">|</span>
           <span class="lang-option" :class="{ active: locale === 'zh' }" @click="changeLanguage('zh')">{{ t('chinese') }}</span>

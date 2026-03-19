@@ -1,7 +1,7 @@
 export default {
   // Setting.vue
   settings: 'Settings',
-  backToHome: 'Back to list',
+  backToList: 'Back to list',
   about: 'About',
   ballAlwaysOnTop: 'Ball Always on Top',
   windowAlwaysOnTop: 'Window Always on Top',
@@ -12,6 +12,7 @@ export default {
   otherSettings: 'Other settings are under development ...',
   english: 'English',
   chinese: '中文',
+  default: 'Default',
 
   // About.vue
   ashare: 'A-share',

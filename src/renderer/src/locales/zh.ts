@@ -1,7 +1,7 @@
 export default {
   // Setting.vue
   settings: '设置',
-  backToHome: '返回列表',
+  backToList: '返回列表',
   about: '关于',
   ballAlwaysOnTop: '悬浮球置顶',
   windowAlwaysOnTop: '窗口置顶',
@@ -12,12 +12,13 @@ export default {
   otherSettings: '其他设置开发中...',
   english: 'English',
   chinese: '中文',
+  default: '默认',
 
   // About.vue
   ashare: 'A股',
   watcher: '行情监控器，由',
   designedBy: '原创设计',
-  clickToShrink: '点击缩小为悬浮球',
+  clickToShrink: '点击切换至悬浮球',
   checkUpdates: '检查更新',
   checking: '检查中...',
   newVersionAvailable: '发现新版本',
