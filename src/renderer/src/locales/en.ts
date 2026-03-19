@@ -59,6 +59,20 @@ export default {
   priceCopied: 'Price Copied!',
   initialCostHint: 'Initial position for',
 
+  // Price Alert
+  priceAlert: 'Price Alert',
+  setPriceAlert: 'Set Price Alert',
+  priceAlertSet: 'Price Alert Set!',
+  priceAlertUpCleared: 'Rise Alert Cleared',
+  priceAlertDownCleared: 'Fall Alert Cleared',
+  priceAlertTitle: 'Stock Price Alert',
+  targetPrice: 'Target Price',
+  alertUp: 'Rise to',
+  alertDown: 'Fall to',
+  clearAlert: 'Clear',
+  priceAlertUpError: 'Target price must be higher than current price',
+  priceAlertDownError: 'Target price must be lower than current price',
+
   // Modal.vue
   initialCost: 'Initial Cost',
   tradePrice: 'Trade Price',

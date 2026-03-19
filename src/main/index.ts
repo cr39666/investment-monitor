@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, Tray, Menu, globalShortcut } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Tray, Menu, globalShortcut, Notification } from 'electron'
 import { join } from 'path'
 import icon from '../../resources/icon.png?asset'
 import { autoUpdater } from 'electron-updater'
@@ -239,6 +239,17 @@ app.whenReady().then(() => {
   })
   autoUpdater.on('update-downloaded', (info) => {
     mainWindow?.webContents.send('update-downloaded', info)
+  })
+
+  // 系统通知
+  ipcMain.on('show-notification', (_event, data: { title: string; body: string }) => {
+    if (Notification.isSupported()) {
+      const notification = new Notification({
+        title: data.title,
+        body: data.body
+      })
+      notification.show()
+    }
   })
 
   app.on('activate', function () {

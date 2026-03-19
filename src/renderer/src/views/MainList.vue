@@ -16,6 +16,14 @@ interface StockItem {
   cost: number // 成本价
   amount: number // 持仓手数 (1手=100股)
   isNew?: boolean // 是否为新添加（用于初始化默认成本）
+  priceAlerts?: PriceAlert[] // 价格提醒列表
+}
+
+// 价格提醒
+interface PriceAlert {
+  targetPrice: number // 目标价格
+  direction: 'up' | 'down' // up: 涨到该价格提醒, down: 跌到该价格提醒
+  triggered: boolean // 是否已触发
 }
 
 // 腾讯行情接口返回的字段对应
@@ -35,6 +43,12 @@ let timer: ReturnType<typeof setInterval> | null = null
 
 const containerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
+
+// Qty 列的展示模式：0=持仓手数, 1=价格提醒
+const qtyDisplayMode = ref(0)
+const toggleQtyDisplayMode = () => {
+  qtyDisplayMode.value = (qtyDisplayMode.value + 1) % 2
+}
 
 // Name 列的展示模式：0=仅名称, 1=仅代码
 const nameDisplayMode = ref(0)
@@ -129,8 +143,6 @@ const modalRef = ref<InstanceType<typeof Modal> | null>(null)
 const confirmRef = ref<InstanceType<typeof Confirm> | null>(null)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 // --------------------------
-
-// 格式化股票名称：超过4个字则截取前3个加...
 const formatName = (name: string | undefined): string => {
   if (!name) return '--'
   if (name.length > 4) {
@@ -376,6 +388,9 @@ const fetchQuotes = (force = false) => {
             stock.isNew = false
             saveStocks()
           }
+
+          // 检查价格提醒
+          checkPriceAlerts(stock, currentPrice)
         }
       }
     })
@@ -428,6 +443,142 @@ const totalHoldingPnl = computed(() => {
     return total + (pnl || 0)
   }, 0)
 })
+
+// 价格提醒相关
+// 设置价格提醒
+const setPriceAlert = async (stock: StockItem) => {
+  const quote = quotes.value[stock.code]
+  const currentPrice = quote?.currentPrice || 0
+
+  // 查找已有的提醒，涨优先
+  const upAlert = stock.priceAlerts?.find((a) => a.direction === 'up')
+  const downAlert = stock.priceAlerts?.find((a) => a.direction === 'down')
+  const existingAlert = upAlert || downAlert
+
+  const res = await modalRef.value?.open(
+    'alert',
+    t('setPriceAlert'),
+    `${quote?.name || stock.code} (${t('currentPrice')}: ${currentPrice.toFixed(2)})`,
+    {
+      price: existingAlert?.targetPrice || currentPrice,
+      direction: existingAlert?.direction || 'up',
+      isUp: quote?.changeAmount !== undefined ? quote.changeAmount >= 0 : undefined
+    }
+  )
+
+  if (res?.confirmed) {
+    // 清除当前选中方向的提醒
+    if (res.clear) {
+      const direction = res.direction
+      if (stock.priceAlerts) {
+        stock.priceAlerts = stock.priceAlerts.filter((a) => a.direction !== direction)
+        if (stock.priceAlerts.length === 0) {
+          stock.priceAlerts = undefined
+        }
+      }
+      saveStocks()
+      // 根据方向显示不同的提示
+      const clearMsg = direction === 'up' ? t('priceAlertUpCleared') : t('priceAlertDownCleared')
+      toastRef.value?.show(clearMsg, 'info')
+      return
+    }
+
+    const targetPrice = res.price
+    const direction = res.direction
+
+    // 验证价格
+    if (direction === 'up' && targetPrice <= currentPrice) {
+      toastRef.value?.show(t('priceAlertUpError'), 'fail')
+      return
+    }
+    if (direction === 'down' && targetPrice >= currentPrice) {
+      toastRef.value?.show(t('priceAlertDownError'), 'fail')
+      return
+    }
+
+    if (!stock.priceAlerts) {
+      stock.priceAlerts = []
+    }
+
+    // 移除同方向的旧提醒，保留另一个方向的提醒
+    stock.priceAlerts = stock.priceAlerts.filter((a) => a.direction !== direction)
+
+    // 添加新提醒
+    stock.priceAlerts.push({
+      targetPrice,
+      direction,
+      triggered: false
+    })
+    saveStocks()
+    toastRef.value?.show(t('priceAlertSet'), 'success')
+  }
+}
+
+// 删除价格提醒（预留功能）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _removePriceAlert = (stock: StockItem, index: number) => {
+  if (stock.priceAlerts) {
+    stock.priceAlerts.splice(index, 1)
+    saveStocks()
+  }
+}
+
+// 检查价格提醒
+const checkPriceAlerts = (stock: StockItem, currentPrice: number) => {
+  if (!stock.priceAlerts || stock.priceAlerts.length === 0) return
+
+  stock.priceAlerts.forEach((alert) => {
+    if (alert.triggered) return
+
+    let shouldTrigger = false
+    if (alert.direction === 'up' && currentPrice >= alert.targetPrice) {
+      shouldTrigger = true
+    } else if (alert.direction === 'down' && currentPrice <= alert.targetPrice) {
+      shouldTrigger = true
+    }
+
+    if (shouldTrigger) {
+      alert.triggered = true
+      const quote = quotes.value[stock.code]
+      const direction = alert.direction === 'up' ? '↑' : '↓'
+      const message = `${quote?.name || stock.code} ${direction} ${alert.targetPrice.toFixed(2)}`
+
+      // 显示列表中的提示
+      toastRef.value?.show(message, 'alert')
+
+      // 发送系统通知
+      window.electron.ipcRenderer.send('show-notification', {
+        title: t('priceAlertTitle'),
+        body: message
+      })
+    }
+  })
+}
+
+// 格式化价格提醒显示
+const formatPriceAlerts = (stock: StockItem): string => {
+  if (!stock.priceAlerts || stock.priceAlerts.length === 0) return '--'
+  return stock.priceAlerts
+    .map((a) => {
+      const arrow = a.direction === 'up' ? '↑' : '↓'
+      const triggered = a.triggered ? '✓' : ''
+      return `${arrow}${a.targetPrice.toFixed(2)}${triggered}`
+    })
+    .join(' ')
+}
+
+// 重置已触发的价格提醒（用于新交易日）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _resetTriggeredAlerts = () => {
+  stocks.value.forEach((stock) => {
+    if (stock.priceAlerts) {
+      stock.priceAlerts.forEach((alert) => {
+        alert.triggered = false
+      })
+    }
+  })
+  saveStocks()
+}
 
 onMounted(async () => {
   loadStocks()
@@ -513,7 +664,9 @@ onUnmounted(() => {
                 sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
               }}</span>
             </th>
-            <th :title="t('amount')">Qty</th>
+            <th :title="qtyDisplayMode === 0 ? t('amount') : t('priceAlert')" @click="toggleQtyDisplayMode" class="clickable-th">
+              {{ qtyDisplayMode === 0 ? 'Qty' : 'Alert' }} <span class="toggle-icon">🔁</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -580,12 +733,20 @@ onUnmounted(() => {
               <span v-else>❇❇</span>
             </td>
             <td
-              @click.stop="adjustStockFlow(stock)"
+              @click.stop="qtyDisplayMode === 0 ? adjustStockFlow(stock) : setPriceAlert(stock)"
               class="clickable-cell"
-              :title="t('clickToAdjust')"
+              :title="qtyDisplayMode === 0 ? t('clickToAdjust') : t('setPriceAlert')"
             >
-              <div v-if="!isCensored" class="clickable-tag">
-                {{ stock.amount }}
+              <div v-if="!isCensored" class="clickable-tag" :class="{ 'alert-active': qtyDisplayMode === 1 && stock.priceAlerts?.length }">
+                <template v-if="qtyDisplayMode === 0">
+                  {{ stock.amount }}
+                </template>
+                <template v-else>
+                  <span v-if="stock.priceAlerts?.length" class="alert-text">
+                    {{ formatPriceAlerts(stock) }}
+                  </span>
+                  <span v-else class="alert-placeholder">+</span>
+                </template>
               </div>
               <span v-else>❇❇</span>
             </td>
@@ -1061,6 +1222,30 @@ onUnmounted(() => {
 .clickable-cell .clickable-tag {
   /* 股数 tag 样式维持绿色 */
   color: var(--ev-c-green);
+}
+
+/* 价格提醒样式 - 黄色系 */
+.alert-active {
+  color: #f1c40f !important;
+  background-color: rgba(241, 196, 15, 0.15);
+  border-color: rgba(241, 196, 15, 0.3);
+}
+
+.alert-text {
+  font-size: 10px;
+}
+
+.alert-placeholder {
+  font-size: 16px;
+  font-weight: bold;
+  opacity: 0.8;
+  color: #f1c40f;
+}
+
+.clickable-cell .alert-active:hover {
+  background-color: rgba(241, 196, 15, 0.25);
+  border-color: rgba(241, 196, 15, 0.5);
+  color: #ffd700 !important;
 }
 
 @keyframes modalSlideUp {

@@ -59,6 +59,20 @@ export default {
   priceCopied: '价格已复制!',
   initialCostHint: '初始仓位',
 
+  // Price Alert
+  priceAlert: '价格提醒',
+  setPriceAlert: '设置价格提醒',
+  priceAlertSet: '价格提醒已设置!',
+  priceAlertUpCleared: '涨价提醒已取消',
+  priceAlertDownCleared: '跌价提醒已取消',
+  priceAlertTitle: '股票价格提醒',
+  targetPrice: '目标价格',
+  alertUp: '涨到',
+  alertDown: '跌到',
+  clearAlert: '清除',
+  priceAlertUpError: '目标价格必须高于当前价格',
+  priceAlertDownError: '目标价格必须低于当前价格',
+
   // Modal.vue
   initialCost: '初始成本',
   tradePrice: '成交价格',
