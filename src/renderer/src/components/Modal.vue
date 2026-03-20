@@ -9,6 +9,7 @@ const modalTitle = ref('')
 const modalMessage = ref('')
 const tradePrice = ref(0)
 const amount = ref(0)
+const currentAmount = ref(0) // 当前持仓手数（调仓模式下使用）
 const alertDirection = ref<'up' | 'down'>('up')
 let resolvePromise: ((value: any) => void) | null = null
 
@@ -39,13 +40,14 @@ const open = (
   type: 'transaction' | 'add' | 'alert',
   title: string,
   message: string,
-  defaults: { price?: number; amount?: number; direction?: 'up' | 'down'; isUp?: boolean } = {}
+  defaults: { price?: number; amount?: number; direction?: 'up' | 'down'; isUp?: boolean; currentAmount?: number } = {}
 ) => {
   modalType.value = type
   modalTitle.value = title
   modalMessage.value = message
   tradePrice.value = defaults.price || 0
   amount.value = defaults.amount || 0
+  currentAmount.value = defaults.currentAmount || 0
   alertDirection.value = defaults.direction || 'up'
   isPriceUp.value = defaults.isUp ?? null
   isVisible.value = true
@@ -90,6 +92,17 @@ const handleClear = () => {
 const handleCancel = () => {
   isVisible.value = false
   resolvePromise?.({ confirmed: false })
+}
+
+// 清仓：返回特殊标记让调用方进行二次确认
+const handleClearPosition = () => {
+  isVisible.value = false
+  resolvePromise?.({
+    confirmed: true,
+    clearPosition: true,
+    price: tradePrice.value,
+    amount: -currentAmount.value // 减去全部持仓
+  })
 }
 
 defineExpose({ open })
@@ -161,6 +174,12 @@ defineExpose({ open })
                   :min="modalType === 'add' ? 1 : undefined"
                 />
                 <label>{{ modalType === 'add' ? t('lotsHint') : t('deltaLots') }}</label>
+                <button
+                  v-if="modalType === 'transaction' && currentAmount > 0"
+                  class="clear-position-btn"
+                  @click="handleClearPosition"
+                  :title="t('clearPosition')"
+                >🧹</button>
               </div>
             </template>
 
@@ -170,6 +189,9 @@ defineExpose({ open })
                 <span :class="['current-price', isPriceUp === true ? 'price-up' : isPriceUp === false ? 'price-down' : '']">
                   {{ parsedMessage.currentPrice.toFixed(2) }}
                 </span>)
+              </template>
+              <template v-else-if="modalType === 'transaction' && currentAmount > 0">
+                {{ modalMessage }} (<span class="current-amount">{{ t('currentLots') }}: {{ currentAmount }}</span>)
               </template>
               <template v-else>{{ modalMessage }}</template>
             </p>
@@ -330,6 +352,30 @@ defineExpose({ open })
 .clear-icon-btn:hover {
   opacity: 1;
   background-color: rgba(231, 76, 60, 0.2);
+}
+
+/* 清仓按钮 */
+.clear-position-btn {
+  padding: 2px 8px;
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  border-radius: 4px;
+  background-color: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.clear-position-btn:hover {
+  background-color: rgba(231, 76, 60, 0.3);
+  border-color: #e74c3c;
+}
+
+/* 当前持仓手数高亮 */
+.current-amount {
+  color: var(--ev-c-green);
+  font-weight: bold;
 }
 
 @keyframes modalSlideUp {

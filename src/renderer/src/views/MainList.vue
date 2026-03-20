@@ -351,16 +351,32 @@ const handleDeleteAction = async () => {
 // 调仓逻辑
 const adjustStockFlow = async (stock: StockItem) => {
   const quote = quotes.value[stock.code]
-  const currentPrice = quote?.currentPrice || stock.cost || 0
+  let lastPrice = quote?.currentPrice || stock.cost || 0
 
-  const res = await modalRef.value?.open(
-    'transaction',
-    t('adjustPosition'),
-    t('positionHint'),
-    { price: currentPrice, amount: 0 }
-  )
+  // 循环：清仓取消后重新显示调仓确认框
+  while (true) {
+    const res = await modalRef.value?.open(
+      'transaction',
+      t('adjustPosition'),
+      t('positionHint'),
+      { price: lastPrice, amount: 0, currentAmount: stock.amount }
+    )
 
-  if (res?.confirmed) {
+    if (!res?.confirmed) return
+
+    // 清仓：需要二次确认
+    if (res.clearPosition) {
+      lastPrice = res.price // 保留用户修改过的价格
+      const stockName = quote?.name || stock.code
+      const confirmMsg = t('clearPositionConfirm', {
+        price: res.price.toFixed(2),
+        name: stockName,
+        amount: stock.amount
+      })
+      const confirmed = await confirmRef.value?.open(t('clearPositionTitle'), confirmMsg)
+      if (!confirmed) continue // 取消清仓 → 重新显示调仓确认框
+    }
+
     const delta = res.amount
     const tradePrice = res.price
     if (delta === 0) return
@@ -371,7 +387,6 @@ const adjustStockFlow = async (stock: StockItem) => {
       return
     }
 
-    const quote = quotes.value[stock.code]
     const yesterdayClose = quote?.yesterdayClose || 0
     const today = getTodayStr()
 
@@ -388,8 +403,6 @@ const adjustStockFlow = async (stock: StockItem) => {
       stock.cost = Number(((oldTotalVal + addTotalVal) / newAmount).toFixed(3))
 
       // 当日盈亏修正：加仓部分的当日盈亏应从买入价算起，而非昨收
-      // 公式里 (现价 - 昨收) * 新总量 会多算加仓部分从昨收到买入价的差额
-      // 所以需要扣除：(买入价 - 昨收) * 加仓手数 * 100
       if (yesterdayClose > 0) {
         stock.dailyRealizedPnl = (stock.dailyRealizedPnl || 0) - (tradePrice - yesterdayClose) * delta * 100
       }
@@ -399,9 +412,7 @@ const adjustStockFlow = async (stock: StockItem) => {
       const realized = (tradePrice - stock.cost) * soldLots * 100
       stock.realizedPnl = (stock.realizedPnl || 0) + realized
 
-      // 当日盈亏修正：卖出部分今天从昨收到卖出价的盈亏需要保留
-      // 但减仓后 (现价 - 昨收) * 股数 会少算已卖部分
-      // 所以需要加上：(卖出价 - 昨收) * 卖出手数 * 100
+      // 当日盈亏修正
       if (yesterdayClose > 0) {
         stock.dailyRealizedPnl = (stock.dailyRealizedPnl || 0) + (tradePrice - yesterdayClose) * soldLots * 100
       }
@@ -410,6 +421,7 @@ const adjustStockFlow = async (stock: StockItem) => {
     stock.amount = newAmount
     saveStocks()
     toastRef.value?.show(t('positionUpdated'), 'success')
+    return // 操作完成，退出循环
   }
 }
 

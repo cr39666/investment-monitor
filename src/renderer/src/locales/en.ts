@@ -80,7 +80,11 @@ export default {
   deltaLots: 'Delta Lots',
   addPosition: 'Add Position',
   adjustPosition: 'Adjust Position',
-  positionHint: 'Positive to buy, negative to sell',
+  positionHint: 'Positive / negative',
+  currentLots: 'Cur Qty',
+  clearPosition: 'Sell All',
+  clearPositionTitle: 'Sell All Confirmation',
+  clearPositionConfirm: 'Sell all {amount} lot(s) of {name} at {price}?',
 
   // Confirm.vue
   confirm: 'Confirm',

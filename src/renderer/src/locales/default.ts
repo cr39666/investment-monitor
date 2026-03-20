@@ -81,6 +81,10 @@ export default {
   addPosition: '添加持仓',
   adjustPosition: '调仓确认',
   positionHint: '正数为买入，负数为卖出',
+  currentLots: 'Cur Qty',
+  clearPosition: '清仓',
+  clearPositionTitle: '清仓确认',
+  clearPositionConfirm: '以 {price} 卖出 {name} 的全部持仓 {amount} 手？',
 
   // Confirm.vue
   confirm: '确定',
