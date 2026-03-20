@@ -17,6 +17,9 @@ interface StockItem {
   amount: number // 持仓手数 (1手=100股)
   isNew?: boolean // 是否为新添加（用于初始化默认成本）
   priceAlerts?: PriceAlert[] // 价格提醒列表
+  realizedPnl?: number // 已实现盈亏（减仓/清仓时累计，永久）
+  dailyRealizedPnl?: number // 当日已实现盈亏（调仓时累计，每日清零）
+  dailyDate?: string // 记录 dailyRealizedPnl 对应的日期，用于自动清零
 }
 
 // 价格提醒
@@ -210,6 +213,26 @@ const cacheQuotes = () => {
   localStorage.setItem('cached_quotes', JSON.stringify(quotes.value))
 }
 
+// 获取今天日期字符串 (YYYY-MM-DD)
+const getTodayStr = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// 清零过期的当日已实现盈亏（跨日自动清零）
+const resetDailyRealizedPnl = () => {
+  const today = getTodayStr()
+  let changed = false
+  stocks.value.forEach((stock) => {
+    if (stock.dailyDate !== today && stock.dailyRealizedPnl) {
+      stock.dailyRealizedPnl = 0
+      stock.dailyDate = today
+      changed = true
+    }
+  })
+  if (changed) saveStocks()
+}
+
 // 保存到本地存储
 const saveStocks = () => {
   localStorage.setItem('my_stocks', JSON.stringify(stocks.value))
@@ -348,13 +371,41 @@ const adjustStockFlow = async (stock: StockItem) => {
       return
     }
 
+    const quote = quotes.value[stock.code]
+    const yesterdayClose = quote?.yesterdayClose || 0
+    const today = getTodayStr()
+
+    // 确保 dailyRealizedPnl 属于今天
+    if (stock.dailyDate !== today) {
+      stock.dailyRealizedPnl = 0
+      stock.dailyDate = today
+    }
+
     if (delta > 0) {
       // 加仓：计算加权平均成本
       const oldTotalVal = stock.amount * stock.cost
       const addTotalVal = delta * tradePrice
       stock.cost = Number(((oldTotalVal + addTotalVal) / newAmount).toFixed(3))
+
+      // 当日盈亏修正：加仓部分的当日盈亏应从买入价算起，而非昨收
+      // 公式里 (现价 - 昨收) * 新总量 会多算加仓部分从昨收到买入价的差额
+      // 所以需要扣除：(买入价 - 昨收) * 加仓手数 * 100
+      if (yesterdayClose > 0) {
+        stock.dailyRealizedPnl = (stock.dailyRealizedPnl || 0) - (tradePrice - yesterdayClose) * delta * 100
+      }
+    } else {
+      // 减仓：将卖出部分的盈亏计入已实现盈亏（永久）
+      const soldLots = Math.abs(delta)
+      const realized = (tradePrice - stock.cost) * soldLots * 100
+      stock.realizedPnl = (stock.realizedPnl || 0) + realized
+
+      // 当日盈亏修正：卖出部分今天从昨收到卖出价的盈亏需要保留
+      // 但减仓后 (现价 - 昨收) * 股数 会少算已卖部分
+      // 所以需要加上：(卖出价 - 昨收) * 卖出手数 * 100
+      if (yesterdayClose > 0) {
+        stock.dailyRealizedPnl = (stock.dailyRealizedPnl || 0) + (tradePrice - yesterdayClose) * soldLots * 100
+      }
     }
-    // 减仓：仅减少数量，不改变单价成本
 
     stock.amount = newAmount
     saveStocks()
@@ -450,19 +501,23 @@ const syncWindowSize = () => {
   window.electron.ipcRenderer.send('resize-window', width, height)
 }
 
-// 计算某只股票的当日盈亏 = (现价 - 昨收) * 股数
+// 计算某只股票的当日盈亏 = (现价 - 昨收) * 当前股数 + 当日已实现盈亏修正
 const calculateDailyPnl = (stock: StockItem): number => {
   const quote = quotes.value[stock.code]
   if (!quote) return 0
-  return (quote.currentPrice - quote.yesterdayClose) * stock.amount * 100
+  const today = getTodayStr()
+  const dailyCorrection = (stock.dailyDate === today ? stock.dailyRealizedPnl : 0) || 0
+  return (quote.currentPrice - quote.yesterdayClose) * stock.amount * 100 + dailyCorrection
 }
 
-// 计算某只股票的持仓总盈亏 = (现价 - 均摊成本) * 股数
+// 计算某只股票的持仓总盈亏 = (现价 - 均摊成本) * 股数 + 已实现盈亏
 // 只有在填写了成本价时才有效
 const calculateTotalPnl = (stock: StockItem): number | null => {
   const quote = quotes.value[stock.code]
   if (!quote || stock.cost <= 0) return null
-  return (quote.currentPrice - stock.cost) * stock.amount * 100
+  const floatingPnl = (quote.currentPrice - stock.cost) * stock.amount * 100
+  const realizedPnl = stock.realizedPnl || 0
+  return floatingPnl + realizedPnl
 }
 
 // 计算某只股票的持仓市值 = 现价 * 股数 * 100
@@ -601,6 +656,7 @@ const formatPriceAlerts = (stock: StockItem): string => {
 
 onMounted(async () => {
   loadStocks()
+  resetDailyRealizedPnl() // 跨日清零当日已实现盈亏
   loadCachedQuotes() // 先加载缓存的行情数据，避免空白
   loadSortState() // 加载排序状态
   fetchQuotes(true) // 初始强制获取一次，不论是否在交易时间

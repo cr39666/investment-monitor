@@ -23,6 +23,7 @@ pnpm-debug.log*
 Thumbs.db
 
 # 编辑器
+.codebuddy/
 .vscode/
 .idea/
 
