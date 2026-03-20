@@ -65,6 +65,10 @@ const open = (
 }
 
 const handleConfirm = () => {
+  // 添加股票时，验证手数必须大于0
+  if (modalType.value === 'add' && amount.value <= 0) {
+    return
+  }
   isVisible.value = false
   resolvePromise?.({
     confirmed: true,
@@ -154,6 +158,7 @@ defineExpose({ open })
                   class="modal-input"
                   ref="qtyInput"
                   @keyup.enter="handleConfirm"
+                  :min="modalType === 'add' ? 1 : undefined"
                 />
                 <label>{{ modalType === 'add' ? t('lotsHint') : t('deltaLots') }}</label>
               </div>

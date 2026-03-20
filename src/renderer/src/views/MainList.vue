@@ -56,9 +56,30 @@ const toggleNameDisplayMode = () => {
   nameDisplayMode.value = (nameDisplayMode.value + 1) % 2
 }
 
-// 排序状态
+// 排序状态（持久化）
 const sortColumn = ref<string | null>(null)
 const sortOrder = ref<'asc' | 'desc' | 'none'>('none')
+
+// 加载排序状态
+const loadSortState = () => {
+  const savedColumn = localStorage.getItem('sort_column')
+  const savedOrder = localStorage.getItem('sort_order')
+  if (savedColumn && savedOrder) {
+    sortColumn.value = savedColumn
+    sortOrder.value = savedOrder as 'asc' | 'desc' | 'none'
+  }
+}
+
+// 保存排序状态
+const saveSortState = () => {
+  if (sortColumn.value) {
+    localStorage.setItem('sort_column', sortColumn.value)
+    localStorage.setItem('sort_order', sortOrder.value)
+  } else {
+    localStorage.removeItem('sort_column')
+    localStorage.removeItem('sort_order')
+  }
+}
 
 const toggleSort = (column: string) => {
   if (sortColumn.value === column) {
@@ -71,6 +92,7 @@ const toggleSort = (column: string) => {
     sortColumn.value = column
     sortOrder.value = 'asc'
   }
+  saveSortState()
 }
 
 // 实际显示的经过排序的股票列表
@@ -169,6 +191,23 @@ const loadStocks = () => {
       console.error('Failed to parse saved stocks', e)
     }
   }
+}
+
+// 加载缓存的行情数据
+const loadCachedQuotes = () => {
+  const saved = localStorage.getItem('cached_quotes')
+  if (saved) {
+    try {
+      quotes.value = JSON.parse(saved)
+    } catch (e) {
+      console.error('Failed to parse cached quotes', e)
+    }
+  }
+}
+
+// 缓存行情数据
+const cacheQuotes = () => {
+  localStorage.setItem('cached_quotes', JSON.stringify(quotes.value))
 }
 
 // 保存到本地存储
@@ -394,6 +433,8 @@ const fetchQuotes = (force = false) => {
         }
       }
     })
+    // 缓存行情数据
+    cacheQuotes()
   }
 
   document.body.appendChild(script)
@@ -560,6 +601,8 @@ const formatPriceAlerts = (stock: StockItem): string => {
 
 onMounted(async () => {
   loadStocks()
+  loadCachedQuotes() // 先加载缓存的行情数据，避免空白
+  loadSortState() // 加载排序状态
   fetchQuotes(true) // 初始强制获取一次，不论是否在交易时间
   timer = setInterval(() => fetchQuotes(false), 1000)
 
