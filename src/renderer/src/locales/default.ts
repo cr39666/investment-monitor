@@ -37,7 +37,6 @@ export default {
   avgBuyPrice: '均摊成本 Avg Cost',
   marketValue: '持仓市值 Market Value',
   change: '涨跌幅 Change',
-  qty: '手数 Lots',
   amount: '持仓手数 Position',
   noStocks: '暂无股票',
   backToBall: '返回悬浮球',
@@ -57,6 +56,8 @@ export default {
   positionUpdated: '持仓已更新',
   amountCannotBeNegative: '持仓手数不能小于0',
   priceCopied: '价格已复制!',
+  dailyPnlCopied: '当日盈亏已复制!',
+  totalPnlCopied: '总盈亏已复制!',
   initialCostHint: '初始仓位',
 
   // Price Alert

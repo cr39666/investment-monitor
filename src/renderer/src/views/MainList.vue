@@ -184,6 +184,17 @@ const copyPrice = (price: number | undefined) => {
   })
 }
 
+// 复制盈亏到剪贴板
+const copyPnl = (type: 'daily' | 'total') => {
+  if (isCensored.value) return
+  const value = type === 'daily' ? totalDailyPnl.value : totalHoldingPnl.value
+  const text = `${value > 0 ? '+' : ''}${value.toFixed(1)}`
+  const label = type === 'daily' ? t('dailyPnlCopied') : t('totalPnlCopied')
+  navigator.clipboard.writeText(text).then(() => {
+    toastRef.value?.show(label, 'success')
+  })
+}
+
 // 加载本地存储
 const loadStocks = () => {
   const saved = localStorage.getItem('my_stocks')
@@ -872,6 +883,7 @@ onUnmounted(() => {
             totalDailyPnl > 0 ? 'red' : totalDailyPnl < 0 ? 'green' : 'gray'
           ]"
           :title="t('dailyPnlTotal')"
+          @click.stop="copyPnl('daily')"
         >
           <span class="pnl-label">D:</span>
           <span v-if="!isCensored"
@@ -885,6 +897,7 @@ onUnmounted(() => {
             totalHoldingPnl > 0 ? 'red' : totalHoldingPnl < 0 ? 'green' : 'gray'
           ]"
           :title="t('holdingPnlTotal')"
+          @click.stop="copyPnl('total')"
         >
           <span class="pnl-label">H:</span>
           <span v-if="!isCensored"

@@ -37,7 +37,6 @@ export default {
   avgBuyPrice: 'Avg. Buy Price',
   marketValue: 'Market Value',
   change: 'Change',
-  qty: 'Qty',
   amount: 'Amount',
   noStocks: 'no stocks',
   backToBall: 'Back to ball',
@@ -57,6 +56,8 @@ export default {
   positionUpdated: 'Position Updated',
   amountCannotBeNegative: 'Position cannot be negative',
   priceCopied: 'Price Copied!',
+  dailyPnlCopied: 'Daily PnL Copied!',
+  totalPnlCopied: 'Total PnL Copied!',
   initialCostHint: 'Initial position for',
 
   // Price Alert
