@@ -32,34 +32,88 @@ const getTodayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const refreshPnl = () => {
-  try {
-    // 同步读取开关设置
-    const pnlSetting = localStorage.getItem('show_ball_pnl')
-    showBallPnl.value = pnlSetting === null ? true : JSON.parse(pnlSetting)
+const isTradingTime = () => {
+  const now = new Date()
+  const day = now.getDay()
+  if (day === 0 || day === 6) return false
+  const timeNum = now.getHours() * 100 + now.getMinutes()
+  return (timeNum >= 915 && timeNum <= 1130) || (timeNum >= 1300 && timeNum <= 1500)
+}
 
-    const stocksRaw = localStorage.getItem('my_stocks')
-    const quotesRaw = localStorage.getItem('cached_quotes')
-    if (!stocksRaw || !quotesRaw) {
-      totalDailyPnl.value = 0
-      hasStocks.value = false
-      return
-    }
-    const stocks: StockItem[] = JSON.parse(stocksRaw)
-    hasStocks.value = stocks.length > 0
-    if (!hasStocks.value) { totalDailyPnl.value = 0; return }
-    const quotes: Record<string, StockQuote> = JSON.parse(quotesRaw)
-    const today = getTodayStr()
-    totalDailyPnl.value = stocks.reduce((sum, s) => {
-      const q = quotes[s.code]
-      if (!q) return sum
-      const dailyCorrection = (s.dailyDate === today ? s.dailyRealizedPnl : 0) || 0
-      return sum + (q.currentPrice - q.yesterdayClose) * s.amount * 100 + dailyCorrection
-    }, 0)
-  } catch {
+// 通过 JSONP 拉取最新行情并更新 localStorage
+const fetchAndRefreshPnl = () => {
+  // 同步读取开关设置
+  const pnlSetting = localStorage.getItem('show_ball_pnl')
+  showBallPnl.value = pnlSetting === null ? true : JSON.parse(pnlSetting)
+
+  const stocksRaw = localStorage.getItem('my_stocks')
+  if (!stocksRaw) {
     totalDailyPnl.value = 0
     hasStocks.value = false
+    return
   }
+  const stocks: StockItem[] = JSON.parse(stocksRaw)
+  hasStocks.value = stocks.length > 0
+  if (!hasStocks.value) { totalDailyPnl.value = 0; return }
+
+  // 非交易时间只读缓存，不发请求
+  if (!isTradingTime()) {
+    calcPnlFromCache(stocks)
+    return
+  }
+
+  const codes = stocks.map((s) => s.code).join(',')
+  const scriptId = 'ball-jsonp-script'
+  let script = document.getElementById(scriptId) as HTMLScriptElement
+  if (script) document.body.removeChild(script)
+
+  script = document.createElement('script')
+  script.id = scriptId
+  script.charset = 'gbk'
+  script.src = `http://qt.gtimg.cn/q=${codes}&t=${Date.now()}`
+
+  script.onload = () => {
+    const cachedRaw = localStorage.getItem('cached_quotes')
+    const cached: Record<string, StockQuote> = cachedRaw ? JSON.parse(cachedRaw) : {}
+
+    stocks.forEach((s) => {
+      const dataStr = (window as any)[`v_${s.code}`]
+      if (dataStr) {
+        const parts = dataStr.split('~')
+        if (parts.length > 5) {
+          cached[s.code] = {
+            currentPrice: parseFloat(parts[3]),
+            yesterdayClose: parseFloat(parts[4])
+          }
+        }
+      }
+    })
+
+    localStorage.setItem('cached_quotes', JSON.stringify(cached))
+    calcPnl(stocks, cached)
+  }
+
+  script.onerror = () => {
+    calcPnlFromCache(stocks)
+  }
+
+  document.body.appendChild(script)
+}
+
+const calcPnlFromCache = (stocks: StockItem[]) => {
+  const quotesRaw = localStorage.getItem('cached_quotes')
+  if (!quotesRaw) { totalDailyPnl.value = 0; return }
+  calcPnl(stocks, JSON.parse(quotesRaw))
+}
+
+const calcPnl = (stocks: StockItem[], quotes: Record<string, StockQuote>) => {
+  const today = getTodayStr()
+  totalDailyPnl.value = stocks.reduce((sum, s) => {
+    const q = quotes[s.code]
+    if (!q) return sum
+    const dailyCorrection = (s.dailyDate === today ? s.dailyRealizedPnl : 0) || 0
+    return sum + (q.currentPrice - q.yesterdayClose) * s.amount * 100 + dailyCorrection
+  }, 0)
 }
 
 const pnlText = computed(() => {
@@ -123,8 +177,8 @@ const onMouseDown = (e: MouseEvent) => {
 onMounted(() => {
   // 初始收缩为 80x80
   window.electron.ipcRenderer.send('resize-window', 80, 80)
-  refreshPnl()
-  pnlTimer = setInterval(refreshPnl, 3000)
+  fetchAndRefreshPnl()
+  pnlTimer = setInterval(fetchAndRefreshPnl, 1000)
 })
 
 onUnmounted(() => {
