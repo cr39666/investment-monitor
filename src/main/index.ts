@@ -10,6 +10,14 @@ let mainWindow: BrowserWindow | null = null
 let currentHotkey: string = ''
 let ballAlwaysOnTop = true
 let windowAlwaysOnTop = false
+let currentLang: string = 'default'
+
+// 托盘菜单多语言文本
+const trayTexts: Record<string, { openWatcher: string; openBall: string; quit: string; tooltip: string }> = {
+  default: { openWatcher: 'Open Watcher', openBall: 'Open Ball', quit: 'Quit', tooltip: 'Stock Watcher' },
+  en: { openWatcher: 'Open Watcher', openBall: 'Open Ball', quit: 'Quit ', tooltip: 'Stock Watcher' },
+  zh: { openWatcher: '打开面板', openBall: '打开悬浮球', quit: '退出程序', tooltip: '股票监控' }
+}
 
 function applyAlwaysOnTop(w: number, h: number): void {
   if (mainWindow) {
@@ -102,10 +110,24 @@ function createWindow(): void {
 }
 
 function createTray(): void {
-  tray = new Tray(icon)
+  const texts = trayTexts[currentLang] || trayTexts['default']
+
+  if (!tray) {
+    tray = new Tray(icon)
+    tray.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          mainWindow.focus()
+        } else {
+          mainWindow.show()
+        }
+      }
+    })
+  }
+
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Open Watcher',
+      label: texts.openWatcher,
       click: () => {
         mainWindow?.webContents.send('navigate', '/')
         mainWindow?.setSkipTaskbar(false)
@@ -117,7 +139,7 @@ function createTray(): void {
       }
     },
     {
-      label: 'Open Ball',
+      label: texts.openBall,
       click: () => {
         mainWindow?.webContents.send('navigate', '/ball')
         mainWindow?.setResizable(true)
@@ -129,21 +151,11 @@ function createTray(): void {
       }
     },
     { type: 'separator' },
-    { label: 'Quit', click: () => app.quit() }
+    { label: texts.quit, click: () => app.quit() }
   ])
 
-  tray.setToolTip('Stock Watcher')
+  tray.setToolTip(texts.tooltip)
   tray.setContextMenu(contextMenu)
-
-  tray.on('click', () => {
-    if (mainWindow) {
-      if (mainWindow.isVisible()) {
-        mainWindow.focus()
-      } else {
-        mainWindow.show()
-      }
-    }
-  })
 }
 
 app.whenReady().then(() => {
@@ -198,6 +210,11 @@ app.whenReady().then(() => {
 
   ipcMain.on('set-global-hotkey', (_event, hotkey: string) => {
     registerHotkey(hotkey)
+  })
+
+  ipcMain.on('set-language', (_event, lang: string) => {
+    currentLang = lang
+    createTray()
   })
 
   ipcMain.on('window-move', (event, { screenX, screenY, offsetX, offsetY }) => {

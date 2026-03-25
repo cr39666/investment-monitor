@@ -112,6 +112,7 @@ const goToAbout = () => {
 const changeLanguage = (lang: string) => {
   locale.value = lang
   localStorage.setItem('lang', lang)
+  window.electron.ipcRenderer.send('set-language', lang)
 }
 
 onMounted(async () => {
@@ -191,9 +192,6 @@ onUnmounted(() => {
           <span class="lang-divider">|</span>
           <span class="lang-option" :class="{ active: locale === 'zh' }" @click="changeLanguage('zh')">{{ t('chinese') }}</span>
         </div>
-      </div>
-      <div class="setting-item">
-        <span class="label">{{ t('otherSettings') }}</span>
       </div>
     </div>
   </div>

@@ -25,6 +25,12 @@ onMounted(() => {
   if (hotkey) {
     window.electron.ipcRenderer.send('set-global-hotkey', hotkey)
   }
+
+  // 同步语言到主进程托盘
+  const lang = localStorage.getItem('lang')
+  if (lang) {
+    window.electron.ipcRenderer.send('set-language', lang)
+  }
 })
 
 onUnmounted(() => {
