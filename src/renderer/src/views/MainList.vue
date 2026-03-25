@@ -721,7 +721,18 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="main-list-container">
-    <DragHandle />
+    <DragHandle>
+      <template #left>
+        <button class="nav-btn" @click="goBack" :title="t('backToBall')">
+          <img src="../assets/electron.svg" class="nav-icon" alt="ball" />
+        </button>
+      </template>
+      <template #right>
+        <button class="nav-btn" @click="goToSetting" :title="t('goToSetting')">
+          ⚙️
+        </button>
+      </template>
+    </DragHandle>
     <div class="table-container">
       <table class="stock-table">
         <thead>
@@ -860,12 +871,6 @@ onUnmounted(() => {
 
     <div class="summary-section">
       <div class="bottom-actions">
-        <button class="back-btn home-btn" @click="goBack" :title="t('backToBall')">
-          <img src="../assets/electron.svg" class="mini-logo" alt="ball" />
-        </button>
-        <button class="back-btn home-btn" @click="goToSetting" :title="t('goToSetting')">
-          ⚙️
-        </button>
         <div class="input-group">
           <input
             v-model="inputCode"
@@ -931,7 +936,7 @@ onUnmounted(() => {
 <style scoped>
 .main-list-container {
   margin: 20px; /* 留出足够的空间显示阴影 */
-  padding: 0 10px 10px 10px; /* Top padding 0 for drag handle */
+  padding: 4px 10px 10px 10px; /* Top padding 0 for drag handle */
   color: #fff;
   min-height: 100px;
   box-sizing: border-box;
@@ -943,6 +948,40 @@ onUnmounted(() => {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   background-clip: padding-box; /* 确保背景不超出圆角边框 */
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+
+.nav-btn:active {
+  transform: scale(1.05);
+}
+
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.nav-btn:hover .nav-icon {
+  opacity: 1;
 }
 
 .bottom-actions {
@@ -982,38 +1021,6 @@ onUnmounted(() => {
 .add-btn:hover {
   background-color: var(--ev-c-green);
   border-color: var(--ev-c-green);
-}
-
-.back-btn {
-  padding: 4px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  background-color: #2f3241;
-  color: #fff;
-  border: 1px solid #3a3d4a; /* Fainter border */
-  border-radius: 6px;
-  transition: background-color 0.3s;
-}
-
-.back-btn:hover {
-  border-color: var(--ev-button-alt-hover-border);
-  background-color: var(--ev-button-alt-hover-bg);
-}
-
-.home-btn {
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 30px;
-  height: 23px;
-  padding: 0;
-}
-
-.mini-logo {
-  width: 20px;
-  height: 20px;
-  opacity: 0.9;
 }
 
 .mini-btn {
@@ -1145,6 +1152,7 @@ onUnmounted(() => {
   font-size: 14px;
   opacity: 0.6;
   transition: all 0.3s ease;
+  margin-left: auto;
 }
 
 .clickable-th {

@@ -155,13 +155,18 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="setting-container">
-    <DragHandle />
-    <div class="setting-header">
-      <span class="back-icon" :title="t('backToList')" @click="goBack">⬅️</span>
-      <span class="title">{{ t('settings') }}</span>
-      <span class="about-icon" :title="t('about')" @click="goToAbout">ℹ️</span>
-    </div>
-    <div class="divider"></div>
+    <DragHandle>
+      <template #left>
+        <button class="nav-btn" @click="goBack" :title="t('backToList')">
+          ⬅️
+        </button>
+      </template>
+      <template #right>
+        <button class="nav-btn" @click="goToAbout" :title="t('about')">
+          ℹ️
+        </button>
+      </template>
+    </DragHandle>
     <div class="setting-content">
       <div class="setting-item">
         <span class="label">{{ t('ballAlwaysOnTop') }}</span>
@@ -245,56 +250,39 @@ onUnmounted(() => {
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); /* 使阴影更聚拢以防止截断 */
-  padding: 0 12px 12px 12px;
+  padding: 4px 12px 12px 12px;
   margin: 16px; /* 给阴影留出空间 */
   color: #eee;
   display: inline-block;
 }
 
-.setting-header {
+.nav-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.6;
+  transition: all 0.3s ease;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding-bottom: 8px;
+  justify-content: center;
 }
 
-.back-icon {
-  cursor: pointer;
-  font-size: 14px;
-  transition: opacity 0.2s;
+.nav-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
 }
 
-.back-icon:hover {
-  opacity: 0.7;
-}
-
-.title {
-  font-size: 13px;
-  font-weight: 500;
-  color: #fff;
-}
-
-.about-icon {
-  cursor: pointer;
-  font-size: 14px;
-  transition: opacity 0.2s;
-}
-
-.about-icon:hover {
-  opacity: 0.7;
-}
-
-.placeholder {
-  width: 14px;
-}
-
-.divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.1);
-  margin-bottom: 12px;
+.nav-btn:active {
+  transform: scale(1.05);
 }
 
 .setting-content {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 6px;
+  padding-top: 6px;
   display: flex;
   flex-direction: column;
   gap: 12px;

@@ -51,8 +51,16 @@ const onMouseDown = (e: MouseEvent) => {
 </script>
 
 <template>
-  <div class="drag-handle-container" @mousedown="onMouseDown">
-    <div class="drag-bar"></div>
+  <div class="drag-handle-container">
+    <div class="nav-button left-button">
+      <slot name="left"></slot>
+    </div>
+    <div class="drag-area" @mousedown="onMouseDown">
+      <div class="drag-bar"></div>
+    </div>
+    <div class="nav-button right-button">
+      <slot name="right"></slot>
+    </div>
   </div>
 </template>
 
@@ -63,14 +71,26 @@ const onMouseDown = (e: MouseEvent) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  cursor: grab;
   user-select: none;
   flex-shrink: 0;
-  /* 弃用 -webkit-app-region: drag，因为在透明无边框窗口下可能由于层级问题失效 */
-  /* 改用手动监听鼠标位移并通过 IPC 实时通知主进程移动窗口 */
+  position: relative;
 }
 
-.drag-handle-container:active {
+.drag-area {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: grab;
+  height: 100%;
+  z-index: 0;
+}
+
+.drag-area:active {
   cursor: grabbing;
 }
 
@@ -80,10 +100,27 @@ const onMouseDown = (e: MouseEvent) => {
   background-color: rgba(255, 255, 255, 0.2);
   border-radius: 2px;
   transition: background-color 0.3s;
-  pointer-events: none; /* 让事件穿透到容器 */
+  pointer-events: none;
 }
 
-.drag-handle-container:hover .drag-bar {
+.drag-area:hover .drag-bar {
   background-color: rgba(255, 255, 255, 0.4);
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.left-button {
+  position: absolute;
+  left: 0;
+}
+
+.right-button {
+  position: absolute;
+  right: 0;
 }
 </style>

@@ -20,6 +20,11 @@ const backToBall = () => {
   router.push('/ball')
 }
 
+const backToSetting = () => {
+  // 返回设置页
+  router.push('/setting')
+}
+
 // === 更新逻辑 ===
 const updateStatus = ref<'idle' | 'checking' | 'available' | 'downloading' | 'ready'>('idle')
 const updateMessage = ref('')
@@ -116,7 +121,13 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="about-container">
-    <DragHandle />
+    <DragHandle>
+      <template #left>
+        <button class="nav-btn" @click="backToSetting" :title="t('backToList')">
+          ⬅️
+        </button>
+      </template>
+    </DragHandle>
     <div class="main">
       <img
         alt="logo"
@@ -169,6 +180,29 @@ onUnmounted(() => {
   border-radius: 16px;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+
+.nav-btn:active {
+  transform: scale(1.05);
 }
 
 .main {
