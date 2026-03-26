@@ -56,6 +56,15 @@ const fetchAndRefreshPnl = () => {
   hasStocks.value = stocks.length > 0
   if (!hasStocks.value) { totalDailyPnl.value = 0; return }
 
+  // 检查缓存是否过期（非今天的缓存）
+  const cachedDate = localStorage.getItem('cached_quotes_date')
+  const today = getTodayStr()
+  if (cachedDate !== today) {
+    // 清除过期缓存
+    localStorage.removeItem('cached_quotes')
+    localStorage.removeItem('cached_quotes_date')
+  }
+
   // 非交易时间只读缓存，不发请求
   if (!isTradingTime()) {
     calcPnlFromCache(stocks)
@@ -89,7 +98,9 @@ const fetchAndRefreshPnl = () => {
       }
     })
 
+    const today = getTodayStr()
     localStorage.setItem('cached_quotes', JSON.stringify(cached))
+    localStorage.setItem('cached_quotes_date', today)
     calcPnl(stocks, cached)
   }
 

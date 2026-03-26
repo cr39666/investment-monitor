@@ -210,6 +210,16 @@ const loadStocks = () => {
 // 加载缓存的行情数据
 const loadCachedQuotes = () => {
   const saved = localStorage.getItem('cached_quotes')
+  const savedDate = localStorage.getItem('cached_quotes_date')
+  const today = getTodayStr()
+
+  // 如果缓存不是今天的，清除缓存（确保使用新的昨收价）
+  if (savedDate !== today) {
+    localStorage.removeItem('cached_quotes')
+    localStorage.removeItem('cached_quotes_date')
+    return
+  }
+
   if (saved) {
     try {
       quotes.value = JSON.parse(saved)
@@ -221,7 +231,9 @@ const loadCachedQuotes = () => {
 
 // 缓存行情数据
 const cacheQuotes = () => {
+  const today = getTodayStr()
   localStorage.setItem('cached_quotes', JSON.stringify(quotes.value))
+  localStorage.setItem('cached_quotes_date', today)
 }
 
 // 获取今天日期字符串 (YYYY-MM-DD)
