@@ -52,7 +52,14 @@ const editName = ref('')
 const editBuyDate = ref('')
 const editIsNew = ref(true) // true=添加, false=编辑
 
-const openEditModal = (code: string, name: string, cost: number, shares: number, buyDate: string, isNew: boolean) => {
+const openEditModal = (
+  code: string,
+  name: string,
+  cost: number,
+  shares: number,
+  buyDate: string,
+  isNew: boolean
+) => {
   editCode.value = code
   editName.value = name
   editCost.value = cost
@@ -73,7 +80,7 @@ const confirmEdit = () => {
     inputCode.value = ''
     toastRef.value?.show(t('fundAdded'), 'success')
   } else {
-    const fund = funds.value.find(f => f.code === editCode.value)
+    const fund = funds.value.find((f) => f.code === editCode.value)
     if (fund) {
       fund.cost = editCost.value
       fund.shares = editShares.value
@@ -129,7 +136,11 @@ const calcHoldingDays = (fund: FundItem): number | null => {
 const loadFunds = () => {
   const saved = localStorage.getItem('my_funds')
   if (saved) {
-    try { funds.value = JSON.parse(saved) } catch { /* ignore */ }
+    try {
+      funds.value = JSON.parse(saved)
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -139,10 +150,7 @@ const saveFunds = () => {
 
 // 获取单个基金净值（天天基金 JSONP，带备用源）
 // 接口固定回调名为 jsonpgz，不支持自定义 cb
-const FUND_APIS = [
-  'https://fundgz.1234567.com.cn/js/',
-  'https://fundgz.1702702.com/js/'
-]
+const FUND_APIS = ['https://fundgz.1234567.com.cn/js/', 'https://fundgz.1702702.com/js/']
 
 const fetchFundByCode = (code: string): Promise<FundQuote | null> => {
   return new Promise((resolve) => {
@@ -205,7 +213,7 @@ const addFund = async () => {
     toastRef.value?.show(t('fundCodeInvalid'), 'fail')
     return
   }
-  if (funds.value.some(f => f.code === code)) {
+  if (funds.value.some((f) => f.code === code)) {
     toastRef.value?.show(t('fundExists'), 'fail')
     return
   }
@@ -223,7 +231,14 @@ const addFund = async () => {
 // 编辑已有基金持仓
 const editFund = (fund: FundItem) => {
   const quote = quotes.value[fund.code]
-  openEditModal(fund.code, quote?.name || fund.code, fund.cost, fund.shares, fund.buyDate || '', false)
+  openEditModal(
+    fund.code,
+    quote?.name || fund.code,
+    fund.cost,
+    fund.shares,
+    fund.buyDate || '',
+    false
+  )
 }
 
 // 删除/清空
@@ -234,7 +249,7 @@ const handleDeleteAction = async () => {
       t('deleteFundConfirm', { count: selectedCodes.value.length })
     )
     if (confirmed) {
-      funds.value = funds.value.filter(f => !selectedCodes.value.includes(f.code))
+      funds.value = funds.value.filter((f) => !selectedCodes.value.includes(f.code))
       selectedCodes.value = []
       saveFunds()
       toastRef.value?.show(t('selectedRemoved'), 'info')
@@ -326,7 +341,8 @@ const displayFunds = computed(() => {
 
   if (sortColumn.value && sortOrder.value !== 'none') {
     return list.sort((a, b) => {
-      let valA = 0, valB = 0
+      let valA = 0,
+        valB = 0
       switch (sortColumn.value) {
         case 'nav':
           valA = quotes.value[a.code]?.nav || 0
@@ -411,9 +427,7 @@ onUnmounted(() => {
         </button>
       </template>
       <template #right>
-        <button class="nav-btn" @click="goToSetting" :title="t('goToSetting')">
-          ⚙️
-        </button>
+        <button class="nav-btn" @click="goToSetting" :title="t('goToSetting')">⚙️</button>
       </template>
     </DragHandle>
 
@@ -429,13 +443,22 @@ onUnmounted(() => {
               {{ nameDisplayMode === 0 ? 'Name' : 'Code' }} <span class="toggle-icon">🔁</span>
             </th>
             <th :title="t('fundNav')" @click="toggleSort('nav')" class="clickable-th">
-              NAV <span class="sort-icon">{{ sortColumn === 'nav' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
+              NAV
+              <span class="sort-icon">{{
+                sortColumn === 'nav' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+              }}</span>
             </th>
             <th :title="t('totalPnl')" @click="toggleSort('pnl')" class="clickable-th">
-              PnL <span class="sort-icon">{{ sortColumn === 'pnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
+              PnL
+              <span class="sort-icon">{{
+                sortColumn === 'pnl' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+              }}</span>
             </th>
             <th :title="t('change')" @click="toggleSort('chg')" class="clickable-th">
-              Chg% <span class="sort-icon">{{ sortColumn === 'chg' ? (sortOrder === 'asc' ? '↑' : '↓') : '' }}</span>
+              Chg%
+              <span class="sort-icon">{{
+                sortColumn === 'chg' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+              }}</span>
             </th>
             <th
               :title="lastColMode === 0 ? t('holdingDays') : t('marketValue')"
@@ -492,7 +515,13 @@ onUnmounted(() => {
             <td class="days-cell">
               <span v-if="!isCensored">
                 <template v-if="lastColMode === 0">{{ calcHoldingDays(fund) ?? '--' }}</template>
-                <template v-else>{{ calculateMarketValue(fund) > 0 ? calculateMarketValue(fund).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '--' }}</template>
+                <template v-else>{{
+                  calculateMarketValue(fund) > 0
+                    ? calculateMarketValue(fund).toLocaleString(undefined, {
+                        maximumFractionDigits: 0
+                      })
+                    : '--'
+                }}</template>
               </span>
               <span v-else>❇❇</span>
             </td>
@@ -532,7 +561,9 @@ onUnmounted(() => {
           <span v-if="!isCensored">{{ totalPnl > 0 ? '+' : '' }}{{ totalPnl.toFixed(1) }}</span>
           <span v-else>❇❇</span>
         </span>
-        <span class="lock-icon" @click="toggleCensor" :title="t('toggleHide')">{{ isCensored ? '🔒' : '🔓' }}</span>
+        <span class="lock-icon" @click="toggleCensor" :title="t('toggleHide')">{{
+          isCensored ? '🔒' : '🔓'
+        }}</span>
       </div>
       <button
         v-if="funds.length > 0"
@@ -553,7 +584,9 @@ onUnmounted(() => {
         <div class="edit-modal">
           <div class="edit-header">
             <span class="edit-cancel" @click="cancelEdit">❌</span>
-            <span class="edit-title">{{ editIsNew ? t('addFundPosition') : t('editFundPosition') }}</span>
+            <span class="edit-title">{{
+              editIsNew ? t('addFundPosition') : t('editFundPosition')
+            }}</span>
             <span class="edit-confirm" @click="confirmEdit">✅</span>
           </div>
           <div class="edit-body">
@@ -606,148 +639,409 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
 }
-.nav-btn:hover { opacity: 1; transform: scale(1.15); filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3)); }
-.nav-btn:active { transform: scale(1.05); }
-.nav-icon { width: 16px; height: 16px; opacity: 0.9; transition: opacity 0.3s ease; }
-.nav-btn:hover .nav-icon { opacity: 1; }
+.nav-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+.nav-btn:active {
+  transform: scale(1.05);
+}
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+.nav-btn:hover .nav-icon {
+  opacity: 1;
+}
 
-.table-container { flex: 1; overflow-y: auto; }
+.table-container {
+  flex: 1;
+  overflow-y: auto;
+}
 
-.fund-table { width: 100%; border-collapse: collapse; text-align: left; }
-.fund-table th, .fund-table td { padding: 1px 4px; border-bottom: 1px solid #3a3d4a; }
-.fund-table th { text-align: center; color: #aaa; font-size: 11px; }
-.fund-table td { font-size: 12px; }
-.fund-table td:first-child, .fund-table td:nth-child(2) { text-align: center; }
-.fund-table td:nth-child(2), .fund-table td:nth-child(3), .fund-table td:nth-child(4) { font-size: 14px; }
+.fund-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.fund-table th,
+.fund-table td {
+  padding: 1px 4px;
+  border-bottom: 1px solid #3a3d4a;
+}
+.fund-table th {
+  text-align: center;
+  color: #aaa;
+  font-size: 11px;
+}
+.fund-table td {
+  font-size: 12px;
+}
+.fund-table td:first-child,
+.fund-table td:nth-child(2) {
+  text-align: center;
+}
+.fund-table td:nth-child(2),
+.fund-table td:nth-child(3),
+.fund-table td:nth-child(4) {
+  font-size: 14px;
+}
 
-.name-cell { white-space: nowrap; text-align: center !important; font-size: 10px; }
-.price-cell { cursor: pointer; }
-.price-cell:active { opacity: 0.6; }
+.name-cell {
+  white-space: nowrap;
+  text-align: center !important;
+  font-size: 10px;
+}
+.price-cell {
+  cursor: pointer;
+}
+.price-cell:active {
+  opacity: 0.6;
+}
 
-.clickable-th { cursor: pointer; user-select: none; transition: color 0.3s; white-space: nowrap; }
-.clickable-th:hover { color: #fff !important; }
-.toggle-icon { font-size: 10px; opacity: 0.5; margin-left: 1px; }
-.sort-icon { font-size: 10px; opacity: 0.5; margin-left: 1px; display: inline-block; width: 8px; color: var(--ev-c-green); }
-.clickable-th:hover .toggle-icon, .clickable-th:hover .sort-icon { opacity: 1; }
+.clickable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.3s;
+  white-space: nowrap;
+}
+.clickable-th:hover {
+  color: #fff !important;
+}
+.toggle-icon {
+  font-size: 10px;
+  opacity: 0.5;
+  margin-left: 1px;
+}
+.sort-icon {
+  font-size: 10px;
+  opacity: 0.5;
+  margin-left: 1px;
+  display: inline-block;
+  width: 8px;
+  color: var(--ev-c-green);
+}
+.clickable-th:hover .toggle-icon,
+.clickable-th:hover .sort-icon {
+  opacity: 1;
+}
 
 .clickable-tag {
-  display: inline-block; padding: 0 4px; line-height: 16px;
-  background-color: rgba(255, 255, 255, 0.06); border-radius: 4px;
-  min-width: 22px; text-align: center; transition: all 0.2s;
+  display: inline-block;
+  padding: 0 4px;
+  line-height: 16px;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  min-width: 22px;
+  text-align: center;
+  transition: all 0.2s;
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
-.clickable-tag:hover { background-color: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+.clickable-tag:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
 
-.row-selected { background-color: rgba(46, 204, 113, 0.15) !important; }
-.row-selected td { border-bottom-color: rgba(46, 204, 113, 0.3); }
+.row-selected {
+  background-color: rgba(46, 204, 113, 0.15) !important;
+}
+.row-selected td {
+  border-bottom-color: rgba(46, 204, 113, 0.3);
+}
 
-.clickable-cell { cursor: pointer; }
-.days-cell { text-align: center; font-size: 12px; color: #888; }
+.clickable-cell {
+  cursor: pointer;
+}
+.days-cell {
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+}
 
-.fund-table tr { transition: background-color 0.2s; cursor: default; }
-.fund-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.04); }
+.fund-table tr {
+  transition: background-color 0.2s;
+  cursor: default;
+}
+.fund-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
 
-.empty-row { text-align: center !important; color: #666; padding: 30px !important; }
+.empty-row {
+  text-align: center !important;
+  color: #666;
+  padding: 30px !important;
+}
 
-.red { color: var(--ev-c-pink); }
-.green { color: var(--ev-c-blue); }
-.gray { color: #666; }
+.red {
+  color: var(--ev-c-pink);
+}
+.green {
+  color: var(--ev-c-blue);
+}
+.gray {
+  color: #666;
+}
 
-.summary-section { margin-top: 4px; display: flex; justify-content: space-between; align-items: center; }
+.summary-section {
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-.bottom-actions { display: flex; gap: 4px; align-items: center; }
+.bottom-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
 
 .mode-btn {
-  border: none; border-radius: 6px; cursor: pointer; padding: 2px;
-  display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
 }
-.stock-btn { background-color: rgba(46, 204, 113, 0.1); }
-.stock-btn:hover { background-color: rgba(46, 204, 113, 0.3); }
-.gold-btn { background-color: rgba(255, 215, 0, 0.1); }
-.gold-btn:hover { background-color: rgba(255, 215, 0, 0.3); }
-.mode-btn:active { transform: scale(0.95); }
-.mode-icon { font-size: 14px; opacity: 0.6; transition: all 0.3s ease; }
-.mode-btn:hover .mode-icon { opacity: 1; transform: scale(1.2); filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3)); }
+.stock-btn {
+  background-color: rgba(46, 204, 113, 0.1);
+}
+.stock-btn:hover {
+  background-color: rgba(46, 204, 113, 0.3);
+}
+.gold-btn {
+  background-color: rgba(255, 215, 0, 0.1);
+}
+.gold-btn:hover {
+  background-color: rgba(255, 215, 0, 0.3);
+}
+.mode-btn:active {
+  transform: scale(0.95);
+}
+.mode-icon {
+  font-size: 14px;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+.mode-btn:hover .mode-icon {
+  opacity: 1;
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
 
-.input-group { display: flex; align-items: center; }
+.input-group {
+  display: flex;
+  align-items: center;
+}
 .fund-input {
-  padding: 4px 2px 4px 6px; font-size: 12px; border-radius: 6px 0 0 6px;
-  border: 1px solid #3a3d4a; border-right: none; background-color: #2f3241;
-  color: white; outline: none; width: 60px;
+  padding: 4px 2px 4px 6px;
+  font-size: 12px;
+  border-radius: 6px 0 0 6px;
+  border: 1px solid #3a3d4a;
+  border-right: none;
+  background-color: #2f3241;
+  color: white;
+  outline: none;
+  width: 60px;
 }
 .add-btn {
-  padding: 3px 2px; font-size: 12px; cursor: pointer; background-color: #2f3241;
-  color: #fff; border: 1px solid #3a3d4a; border-radius: 0 6px 6px 0; transition: background-color 0.3s;
+  padding: 3px 2px;
+  font-size: 12px;
+  cursor: pointer;
+  background-color: #2f3241;
+  color: #fff;
+  border: 1px solid #3a3d4a;
+  border-radius: 0 6px 6px 0;
+  transition: background-color 0.3s;
 }
-.add-btn:hover { background-color: var(--ev-c-green); border-color: var(--ev-c-green); }
+.add-btn:hover {
+  background-color: var(--ev-c-green);
+  border-color: var(--ev-c-green);
+}
 
 .summary-pnl {
-  background-color: rgba(255, 255, 255, 0.05); flex: 1; display: flex; gap: 6px;
-  align-items: center; justify-content: flex-end; margin-left: 8px;
-  padding: 1px 6px; border-radius: 6px; transition: background-color 0.2s;
+  background-color: rgba(255, 255, 255, 0.05);
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
 }
-.pnl-label { font-size: 10px; opacity: 0.6; margin-right: 2px; }
-.visible-summary { user-select: none; display: flex; align-items: center; font-size: 13px; padding: 0 4px; cursor: pointer; }
-.visible-summary:hover { background-color: rgba(255, 255, 255, 0.05); border-radius: 6px; }
+.pnl-label {
+  font-size: 10px;
+  opacity: 0.6;
+  margin-right: 2px;
+}
+.visible-summary {
+  user-select: none;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.visible-summary:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
 
-.lock-icon { font-size: 14px; opacity: 0.6; transition: all 0.3s ease; cursor: pointer; }
-.lock-icon:hover { opacity: 1; transform: scale(1.2); filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3)); }
+.lock-icon {
+  font-size: 14px;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.lock-icon:hover {
+  opacity: 1;
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
 
 .clear-all-btn {
-  background-color: rgba(255, 77, 79, 0.1); border: none; border-radius: 6px;
-  cursor: pointer; margin-left: 8px; padding: 3px 2px;
-  display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;
+  background-color: rgba(255, 77, 79, 0.1);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-left: 8px;
+  padding: 3px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
 }
-.clear-all-btn:hover { background-color: rgba(255, 77, 79, 0.3); }
-.clear-all-icon { font-size: 14px; opacity: 0.6; transition: all 0.3s ease; }
-.clear-all-btn:hover .clear-all-icon { opacity: 1; transform: scale(1.2); filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3)); }
+.clear-all-btn:hover {
+  background-color: rgba(255, 77, 79, 0.3);
+}
+.clear-all-icon {
+  font-size: 14px;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+.clear-all-btn:hover .clear-all-icon {
+  opacity: 1;
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
 
 /* 编辑持仓弹窗 */
 .edit-overlay {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-  backdrop-filter: blur(8px); display: flex; align-items: center;
-  justify-content: center; z-index: 10000; animation: editFadeIn 0.2s ease-out;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: editFadeIn 0.2s ease-out;
 }
 .edit-modal {
-  background-color: #1a1c26; border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px; width: 220px; padding: 8px 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8); animation: editSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  background-color: #1a1c26;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  width: 220px;
+  padding: 8px 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+  animation: editSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .edit-header {
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: 13px; font-weight: bold; padding-bottom: 8px;
-  color: #fff; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: bold;
+  padding-bottom: 8px;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-.edit-title { flex: 1; text-align: center; }
-.edit-cancel, .edit-confirm {
-  cursor: pointer; padding: 4px; border-radius: 4px;
-  transition: background-color 0.2s; font-size: 14px;
+.edit-title {
+  flex: 1;
+  text-align: center;
 }
-.edit-cancel:hover, .edit-confirm:hover { background-color: rgba(255, 255, 255, 0.1); }
-.edit-body { padding-top: 8px; }
-.edit-name { font-size: 12px; color: #aaa; text-align: center; margin-bottom: 8px; }
-.edit-row {
-  display: flex; align-items: center; justify-content: space-between;
+.edit-cancel,
+.edit-confirm {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  font-size: 14px;
+}
+.edit-cancel:hover,
+.edit-confirm:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.edit-body {
+  padding-top: 8px;
+}
+.edit-name {
+  font-size: 12px;
+  color: #aaa;
+  text-align: center;
   margin-bottom: 8px;
 }
-.edit-row label { font-size: 11px; color: #ccc; }
+.edit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.edit-row label {
+  font-size: 11px;
+  color: #ccc;
+}
 .edit-input {
-  width: 100px; padding: 4px 6px; font-size: 12px; border-radius: 6px;
-  border: 1px solid #3a3d4a; background-color: #2f3241; color: white;
-  outline: none; text-align: right;
+  width: 100px;
+  padding: 4px 6px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #3a3d4a;
+  background-color: #2f3241;
+  color: white;
+  outline: none;
+  text-align: right;
 }
-.edit-input::-webkit-outer-spin-button, .edit-input::-webkit-inner-spin-button {
-  -webkit-appearance: none; margin: 0;
+.edit-input::-webkit-outer-spin-button,
+.edit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
-.edit-input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
-.date-input { font-size: 11px; color-scheme: dark; }
+.edit-input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.date-input {
+  font-size: 11px;
+  color-scheme: dark;
+}
 
 @keyframes editSlideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes editFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>
