@@ -58,8 +58,8 @@ function toggleMainWindow(): void {
     mainWindow.setSkipTaskbar(true)
     applyAlwaysOnTop(80, 80)
   } else {
-    // 否则展开为窗口界面
-    mainWindow.webContents.send('navigate', '/')
+    // 否则展开为窗口界面，让渲染进程恢复到上次浏览的主视图
+    mainWindow.webContents.send('navigate-back')
     mainWindow.show()
     mainWindow.setSkipTaskbar(false)
     mainWindow.setResizable(true)
@@ -150,7 +150,7 @@ function createTray(): void {
     {
       label: texts.openMonitor,
       click: () => {
-        mainWindow?.webContents.send('navigate', '/')
+        mainWindow?.webContents.send('navigate-back')
         mainWindow?.setSkipTaskbar(false)
         mainWindow?.setResizable(true)
         mainWindow?.setContentSize(400, 600)

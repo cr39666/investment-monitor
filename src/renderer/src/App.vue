@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Toast from './components/Toast.vue'
+import { getLastMainView } from './router'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -10,6 +11,10 @@ const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
 const handleNavigate = (_event, path: string) => {
   router.push(path)
+}
+
+const handleNavigateBack = () => {
+  router.push(getLastMainView())
 }
 
 const handleUpdateAvailable = (_event, info: any) => {
@@ -33,6 +38,7 @@ const handleUpdateAvailable = (_event, info: any) => {
 
 onMounted(() => {
   window.electron.ipcRenderer.on('navigate', handleNavigate)
+  window.electron.ipcRenderer.on('navigate-back', handleNavigateBack)
   window.electron.ipcRenderer.on('update-available', handleUpdateAvailable)
 
   // 初始化全局设置
@@ -59,6 +65,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.electron.ipcRenderer.removeAllListeners('navigate')
+  window.electron.ipcRenderer.removeAllListeners('navigate-back')
   window.electron.ipcRenderer.removeAllListeners('update-available')
 })
 </script>
