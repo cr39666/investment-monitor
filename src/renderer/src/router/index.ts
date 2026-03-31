@@ -2,12 +2,13 @@ import { createRouter, createWebHashHistory, type RouteLocationNormalized } from
 import FloatingBall from '../views/FloatingBall.vue'
 import MainList from '../views/MainList.vue'
 import GoldView from '../views/GoldView.vue'
+import FundView from '../views/FundView.vue'
 import About from '../views/About.vue'
 import Setting from '../views/Setting.vue'
 
-// 记录上一个"主视图"路径（stock 或 gold），供设置页/悬浮球返回时使用
+// 记录上一个"主视图"路径（stock 或 gold 或 fund），供设置页/悬浮球返回时使用
 const MAIN_VIEW_KEY = 'last_main_view'
-const MAIN_VIEWS = ['/', '/gold']
+const MAIN_VIEWS = ['/', '/gold', '/fund']
 
 function recordLastMainView(to: RouteLocationNormalized) {
   if (MAIN_VIEWS.includes(to.path)) {
@@ -36,6 +37,11 @@ const routes = [
     path: '/gold',
     name: 'GoldView',
     component: GoldView
+  },
+  {
+    path: '/fund',
+    name: 'FundView',
+    component: FundView
   },
   {
     path: '/setting',

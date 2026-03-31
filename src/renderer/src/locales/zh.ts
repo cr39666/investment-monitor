@@ -61,6 +61,7 @@ export default {
   totalPnlCopied: '总盈亏已复制!',
   switchToGold: '切换到黄金',
   switchToStock: '切换到股票',
+  switchToFund: '切换到基金',
 
   // Price Alert
   priceAlert: '价格提醒',
@@ -113,4 +114,22 @@ export default {
   newVersionFound: '新版本 v{version} 已发布，请手动更新',
   newVersionFoundGeneric: '发现新版本，请手动更新',
   confirmUpdate: '下载更新',
+
+  // FundView.vue
+  noFunds: '暂无基金',
+  fundCode: '基金代码',
+  fundCodeInvalid: '请输入6位基金代码',
+  fundExists: '该基金已存在',
+  fundAdded: '基金已添加!',
+  fundNav: '最新净值',
+  deleteFund: '删除基金',
+  deleteFundConfirm: '确定要删除选中的 {count} 只基金吗？',
+  clearFundConfirm: '确定要清空列表中的所有基金吗？',
+  addFundPosition: '添加基金持仓',
+  editFundPosition: '编辑持仓',
+  fundCostNav: '成本净值',
+  fundShares: '持有份额',
+  clickToEdit: '点击编辑持仓',
+  holdingDays: '持有天数',
+  fundBuyDate: '买入日期',
 }

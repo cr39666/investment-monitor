@@ -53,6 +53,11 @@ const goToGold = () => {
   router.push('/gold')
 }
 
+// 前往基金页面
+const goToFund = () => {
+  router.push('/fund')
+}
+
 // Qty 列的展示模式：0=持仓手数, 1=价格提醒
 const qtyDisplayMode = ref(0)
 const toggleQtyDisplayMode = () => {
@@ -914,6 +919,9 @@ onUnmounted(() => {
         <button class="mode-btn" @click="goToGold" :title="t('switchToGold')">
           <span class="mode-icon">🟨</span>
         </button>
+        <button class="mode-btn fund-btn" @click="goToFund" :title="t('switchToFund')">
+          <span class="mode-icon">💹</span>
+        </button>
         <div class="input-group">
           <input
             v-model="inputCode"
@@ -1051,6 +1059,13 @@ onUnmounted(() => {
 
 .mode-btn:active {
   transform: scale(0.95);
+}
+
+.fund-btn {
+  background-color: rgba(46, 204, 113, 0.1);
+}
+.fund-btn:hover {
+  background-color: rgba(46, 204, 113, 0.3);
 }
 
 .mode-icon {

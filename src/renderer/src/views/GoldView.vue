@@ -115,6 +115,10 @@ const goToStockList = () => {
   router.push('/')
 }
 
+const goToFund = () => {
+  router.push('/fund')
+}
+
 const goToBall = () => {
   window.electron.ipcRenderer.send('resize-window', 60, 60)
   router.push('/ball')
@@ -193,6 +197,9 @@ onUnmounted(() => {
     <div class="gold-footer">
       <button class="switch-btn" @click="goToStockList" :title="t('switchToStock')">
         <span class="mode-icon">📈</span>
+      </button>
+      <button class="switch-btn fund-btn" @click="goToFund" :title="t('switchToFund')">
+        <span class="mode-icon">💹</span>
       </button>
       <button class="currency-btn" @click="toggleCurrency">
         {{ currency === 'CNY' ? '¥ CNY' : '$ USD' }}
@@ -377,6 +384,13 @@ onUnmounted(() => {
 .switch-btn:hover .mode-icon {
   transform: scale(1.2);
   filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+
+.fund-btn {
+  background-color: rgba(46, 204, 113, 0.1);
+}
+.fund-btn:hover {
+  background-color: rgba(46, 204, 113, 0.3);
 }
 
 .currency-btn {

@@ -61,6 +61,7 @@ export default {
   totalPnlCopied: 'Total PnL Copied!',
   switchToGold: 'Switch to Gold',
   switchToStock: 'Switch to Stock',
+  switchToFund: 'Switch to Fund',
 
   // Price Alert
   priceAlert: 'Price Alert',
@@ -113,4 +114,22 @@ export default {
   newVersionFound: 'New version v{version} available, please update manually',
   newVersionFoundGeneric: 'New version available, please update manually',
   confirmUpdate: 'Download Update',
+
+  // FundView.vue
+  noFunds: 'No funds',
+  fundCode: 'Fund Code',
+  fundCodeInvalid: 'Please enter a 6-digit fund code',
+  fundExists: 'Fund already exists',
+  fundAdded: 'Fund Added!',
+  fundNav: 'Net Asset Value',
+  deleteFund: 'Delete Fund',
+  deleteFundConfirm: 'Are you sure you want to delete {count} selected fund(s)?',
+  clearFundConfirm: 'Are you sure you want to clear all funds?',
+  addFundPosition: 'Add Fund Position',
+  editFundPosition: 'Edit Position',
+  fundCostNav: 'Cost NAV',
+  fundShares: 'Shares',
+  clickToEdit: 'Click to edit position',
+  holdingDays: 'Holding Days',
+  fundBuyDate: 'Buy Date',
 }
