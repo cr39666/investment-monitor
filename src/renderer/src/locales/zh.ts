@@ -1,7 +1,7 @@
 export default {
   // Setting.vue
   settings: '设置',
-  backToList: '返回列表',
+  goBack: '返回列表',
   about: '关于',
   ballAlwaysOnTop: '悬浮球置顶',
   windowAlwaysOnTop: '窗口置顶',
@@ -10,6 +10,7 @@ export default {
   clickToSet: '点击设置',
   language: '语言',
   showBallPnl: '悬浮球显示盈亏',
+  showFund: '菜单显示基金',
   english: 'English',
   chinese: '中文',
   default: '默认',

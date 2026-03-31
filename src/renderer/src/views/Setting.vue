@@ -102,6 +102,12 @@ const toggleShowBallPnl = () => {
   localStorage.setItem('show_ball_pnl', JSON.stringify(showBallPnl.value))
 }
 
+const showFund = ref(false)
+const toggleShowFund = () => {
+  showFund.value = !showFund.value
+  localStorage.setItem('show_fund', JSON.stringify(showFund.value))
+}
+
 const goBack = () => {
   router.push(getLastMainView())
 }
@@ -129,6 +135,10 @@ onMounted(async () => {
   const pnlSaved = localStorage.getItem('show_ball_pnl')
   if (pnlSaved !== null) {
     showBallPnl.value = JSON.parse(pnlSaved)
+  }
+  const fundSaved = localStorage.getItem('show_fund')
+  if (fundSaved !== null) {
+    showFund.value = JSON.parse(fundSaved)
   }
   const hotkeySaved = localStorage.getItem('global_hotkey')
   if (hotkeySaved !== null) {
@@ -158,7 +168,7 @@ onUnmounted(() => {
   <div ref="containerRef" class="setting-container">
     <DragHandle>
       <template #left>
-        <button class="nav-btn" @click="goBack" :title="t('backToList')">
+        <button class="nav-btn" @click="goBack" :title="t('goBack')">
           ⬅️
         </button>
       </template>
@@ -169,6 +179,16 @@ onUnmounted(() => {
       </template>
     </DragHandle>
     <div class="setting-content">
+      <div class="setting-item">
+        <span class="label">{{ t('language') }}</span>
+        <div class="lang-select">
+          <span class="lang-option" :class="{ active: locale === 'default' }" @click="changeLanguage('default')">{{ t('default') }}</span>
+          <span class="lang-divider">|</span>
+          <span class="lang-option" :class="{ active: locale === 'en' }" @click="changeLanguage('en')">{{ t('english') }}</span>
+          <span class="lang-divider">|</span>
+          <span class="lang-option" :class="{ active: locale === 'zh' }" @click="changeLanguage('zh')">{{ t('chinese') }}</span>
+        </div>
+      </div>
       <div class="setting-item">
         <span class="label">{{ t('ballAlwaysOnTop') }}</span>
         <ToggleSwitch :active="ballAlwaysOnTop" @toggle="toggleBallAlwaysOnTop" />
@@ -181,22 +201,16 @@ onUnmounted(() => {
         <span class="label">{{ t('showBallPnl') }}</span>
         <ToggleSwitch :active="showBallPnl" @toggle="toggleShowBallPnl" />
       </div>
+      <div class="setting-item">
+        <span class="label">{{ t('showFund') }}</span>
+        <ToggleSwitch :active="showFund" @toggle="toggleShowFund" />
+      </div>
       <div class="setting-item hotkey-item">
         <span class="label">{{ t('hotkeyLabel') }}</span>
         <div class="hotkey-display" :class="{ recording: isRecording, empty: !globalHotkey && !isRecording }" @click="startRecording">
           <span v-if="isRecording">{{ t('pressKeys') }}</span>
           <span v-else-if="globalHotkey">{{ globalHotkey }}</span>
           <span v-else class="placeholder">{{ t('clickToSet') }}</span>
-        </div>
-      </div>
-      <div class="setting-item">
-        <span class="label">{{ t('language') }}</span>
-        <div class="lang-select">
-          <span class="lang-option" :class="{ active: locale === 'default' }" @click="changeLanguage('default')">{{ t('default') }}</span>
-          <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: locale === 'en' }" @click="changeLanguage('en')">{{ t('english') }}</span>
-          <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: locale === 'zh' }" @click="changeLanguage('zh')">{{ t('chinese') }}</span>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 export default {
   // Setting.vue
   settings: 'Settings',
-  backToList: 'Back to list',
+  goBack: 'Back',
   about: 'About',
   ballAlwaysOnTop: 'Ball Always on Top',
   windowAlwaysOnTop: 'Window Always on Top',
@@ -10,6 +10,7 @@ export default {
   clickToSet: 'Click to set',
   language: 'Language',
   showBallPnl: 'Ball Show Daily PnL',
+  showFund: 'Menu Display Fund ',
   english: 'English',
   chinese: '中文',
   default: 'Default',

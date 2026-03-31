@@ -195,7 +195,7 @@ onUnmounted(() => {
   <div ref="containerRef" class="about-container">
     <DragHandle>
       <template #left>
-        <button class="nav-btn" @click="backToSetting" :title="t('backToList')">
+        <button class="nav-btn" @click="backToSetting" :title="t('goBack')">
           ⬅️
         </button>
       </template>

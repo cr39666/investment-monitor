@@ -58,6 +58,9 @@ const goToFund = () => {
   router.push('/fund')
 }
 
+// 是否显示基金按钮
+const showFund = ref(false)
+
 // Qty 列的展示模式：0=持仓手数, 1=价格提醒
 const qtyDisplayMode = ref(0)
 const toggleQtyDisplayMode = () => {
@@ -725,6 +728,10 @@ const formatPriceAlerts = (stock: StockItem): string => {
 onMounted(async () => {
   loadStocks()
   resetDailyRealizedPnl() // 跨日清零当日已实现盈亏
+
+  // 加载基金显示配置
+  const fundSaved = localStorage.getItem('show_fund')
+  showFund.value = fundSaved !== null ? JSON.parse(fundSaved) : false
   loadCachedQuotes() // 先加载缓存的行情数据，避免空白
   loadSortState() // 加载排序状态
   fetchQuotes(true) // 初始强制获取一次，不论是否在交易时间
@@ -919,7 +926,7 @@ onUnmounted(() => {
         <button class="mode-btn" @click="goToGold" :title="t('switchToGold')">
           <span class="mode-icon">🟨</span>
         </button>
-        <button class="mode-btn fund-btn" @click="goToFund" :title="t('switchToFund')">
+        <button v-if="showFund" class="mode-btn fund-btn" @click="goToFund" :title="t('switchToFund')">
           <span class="mode-icon">💹</span>
         </button>
         <div class="input-group">

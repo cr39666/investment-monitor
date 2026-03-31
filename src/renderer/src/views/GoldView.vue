@@ -119,6 +119,9 @@ const goToFund = () => {
   router.push('/fund')
 }
 
+// 是否显示基金按钮
+const showFund = ref(false)
+
 const goToBall = () => {
   window.electron.ipcRenderer.send('resize-window', 60, 60)
   router.push('/ball')
@@ -129,6 +132,10 @@ const goToSetting = () => {
 }
 
 onMounted(async () => {
+  // 加载基金显示配置
+  const fundSaved = localStorage.getItem('show_fund')
+  showFund.value = fundSaved !== null ? JSON.parse(fundSaved) : false
+
   fetchAllPrices()
   timer = setInterval(fetchAllPrices, 10000)
 
@@ -198,7 +205,7 @@ onUnmounted(() => {
       <button class="switch-btn" @click="goToStockList" :title="t('switchToStock')">
         <span class="mode-icon">📈</span>
       </button>
-      <button class="switch-btn fund-btn" @click="goToFund" :title="t('switchToFund')">
+      <button v-if="showFund" class="switch-btn fund-btn" @click="goToFund" :title="t('switchToFund')">
         <span class="mode-icon">💹</span>
       </button>
       <button class="currency-btn" @click="toggleCurrency">
