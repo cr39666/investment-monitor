@@ -1,15 +1,39 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import Toast from './components/Toast.vue'
 
+const { t } = useI18n()
 const router = useRouter()
+const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
 const handleNavigate = (_event, path: string) => {
   router.push(path)
 }
 
+const handleUpdateAvailable = (_event, info: any) => {
+  const version = info?.version || ''
+  // 存储更新信息到 localStorage，供 About 页读取
+  const updateData: any = { version }
+  if (info?.releaseNotes) {
+    updateData.releaseNotes = typeof info.releaseNotes === 'string'
+      ? info.releaseNotes
+      : Array.isArray(info.releaseNotes)
+        ? info.releaseNotes.map((n: any) => n.note).join('\n')
+        : ''
+  }
+  localStorage.setItem('pending_update', JSON.stringify(updateData))
+
+  const msg = version
+    ? t('newVersionFound', { version })
+    : t('newVersionFoundGeneric')
+  toastRef.value?.show(msg, 'alert')
+}
+
 onMounted(() => {
   window.electron.ipcRenderer.on('navigate', handleNavigate)
+  window.electron.ipcRenderer.on('update-available', handleUpdateAvailable)
 
   // 初始化全局设置
   const ballAlwaysOnTop = localStorage.getItem('ball_always_on_top')
@@ -35,11 +59,13 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.electron.ipcRenderer.removeAllListeners('navigate')
+  window.electron.ipcRenderer.removeAllListeners('update-available')
 })
 </script>
 
 <template>
   <router-view />
+  <Toast ref="toastRef" />
 </template>
 
 <style>

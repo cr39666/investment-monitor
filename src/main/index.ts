@@ -103,6 +103,13 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+
+    // 启动后延迟自动检查更新
+    if (app.isPackaged) {
+      setTimeout(() => {
+        autoUpdater.checkForUpdates()
+      }, 3000)
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

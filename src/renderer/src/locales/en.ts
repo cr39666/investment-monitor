@@ -110,4 +110,7 @@ export default {
   metalPlatinum: 'Platinum',
   metalPalladium: 'Palladium',
   fetchError: 'Data unavailable, check back later',
+  newVersionFound: 'New version v{version} available, please update manually',
+  newVersionFoundGeneric: 'New version available, please update manually',
+  confirmUpdate: 'Download Update',
 }

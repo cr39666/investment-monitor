@@ -110,4 +110,7 @@ export default {
   metalPlatinum: '铂金',
   metalPalladium: '钯金',
   fetchError: '数据获取失败，稍后再看',
+  newVersionFound: '新版本 v{version} 已发布，请手动更新',
+  newVersionFoundGeneric: '发现新版本，请手动更新',
+  confirmUpdate: '下载更新',
 }

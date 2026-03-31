@@ -3,7 +3,6 @@ import DragHandle from '../components/DragHandle.vue'
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getLastMainView } from '../router'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -16,14 +15,11 @@ const containerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 const backToBall = () => {
-  // 返回上一个主视图（stock 或 gold），并缩小到球大小
-  const lastView = getLastMainView()
   window.electron.ipcRenderer.send('resize-window', 60, 60)
-  router.push(lastView === '/' ? '/ball' : '/ball')
+  router.push('/ball')
 }
 
 const backToSetting = () => {
-  // 返回设置页
   router.push('/setting')
 }
 
@@ -33,7 +29,19 @@ const updateMessage = ref('')
 const downloadProgress = ref(0)
 const versionInfo = ref('')
 const releaseNotes = ref('')
-const showReleaseNotes = ref(false)
+const showUpdateDialog = ref(false)
+const hasPendingUpdate = ref(false)
+
+// 点击版本号
+const onVersionClick = () => {
+  if (hasPendingUpdate.value) {
+    // 有待更新 → 显示 release notes + 确认下载弹窗
+    showUpdateDialog.value = true
+  } else {
+    // 没有待更新 → 手动检查
+    checkForUpdates()
+  }
+}
 
 const checkForUpdates = () => {
   if (updateStatus.value === 'checking' || updateStatus.value === 'downloading') return
@@ -42,10 +50,23 @@ const checkForUpdates = () => {
   window.electron.ipcRenderer.send('check-for-update')
 }
 
+// 用户确认下载
+const confirmDownload = () => {
+  showUpdateDialog.value = false
+  window.electron.ipcRenderer.send('download-update')
+  updateStatus.value = 'downloading'
+  updateMessage.value = t('downloading')
+}
+
+const dismissUpdate = () => {
+  showUpdateDialog.value = false
+}
+
 const installUpdate = () => {
   window.electron.ipcRenderer.send('quit-and-install')
 }
 
+// 格式化 release notes
 // 格式化 release notes（简单的 Markdown 转 HTML）
 const formatReleaseNotes = (notes: string): string => {
   if (!notes) return ''
@@ -77,12 +98,23 @@ const syncWindowSize = () => {
 }
 
 onMounted(async () => {
-  // 监听更新事件
+  // 读取启动时检测到的更新信息
+  const pendingRaw = localStorage.getItem('pending_update')
+  if (pendingRaw) {
+    try {
+      const pending = JSON.parse(pendingRaw)
+      hasPendingUpdate.value = true
+      versionInfo.value = pending.version || ''
+      releaseNotes.value = pending.releaseNotes || ''
+    } catch { /* ignore */ }
+  }
+
+  // 监听更新事件 — update-available 不再自动下载
   window.electron.ipcRenderer.on('update-available', (_event, info: any) => {
     updateStatus.value = 'available'
+    hasPendingUpdate.value = true
     versionInfo.value = info?.version || ''
-    updateMessage.value = t('newVersionAvailable')
-    // 提取 release notes
+    updateMessage.value = ''
     if (info?.releaseNotes) {
       if (typeof info.releaseNotes === 'string') {
         releaseNotes.value = info.releaseNotes
@@ -90,9 +122,8 @@ onMounted(async () => {
         releaseNotes.value = info.releaseNotes.map((n: any) => n.note).join('\n')
       }
     }
-    window.electron.ipcRenderer.send('download-update')
-    updateStatus.value = 'downloading'
-    updateMessage.value = t('downloading')
+    // 弹出确认弹窗
+    showUpdateDialog.value = true
   })
 
   window.electron.ipcRenderer.on('update-not-available', () => {
@@ -120,6 +151,8 @@ onMounted(async () => {
   window.electron.ipcRenderer.on('update-downloaded', (_event, info: any) => {
     updateStatus.value = 'ready'
     updateMessage.value = t('readyToInstall')
+    hasPendingUpdate.value = false
+    localStorage.removeItem('pending_update')
     // 提取 release notes（如果 update-available 中没有）
     if (!releaseNotes.value && info?.releaseNotes) {
       if (typeof info.releaseNotes === 'string') {
@@ -140,7 +173,6 @@ onMounted(async () => {
 
     // 2. 延迟再同步一次，作为安全网
     setTimeout(syncWindowSize, 300)
-
     resizeObserver = new ResizeObserver(() => {
       // 使用 rAF 确保在浏览器完成布局/绘制后再读取尺寸
       requestAnimationFrame(syncWindowSize)
@@ -186,23 +218,17 @@ onUnmounted(() => {
     <div class="version-container">
       <span
         class="app-version"
-        @click="checkForUpdates"
+        :class="{ 'has-update': hasPendingUpdate }"
+        @click="onVersionClick"
         :title="t('checkUpdates')"
       >
         v{{ version }}
         <span class="update-icon">↻</span>
+        <span v-if="hasPendingUpdate" class="update-dot"></span>
       </span>
-      <div v-if="updateMessage || updateStatus !== 'idle'" class="update-section">
+      <div v-if="updateMessage || updateStatus === 'downloading' || updateStatus === 'ready'" class="update-section">
         <span class="update-msg" v-if="updateMessage">{{ updateMessage }}</span>
-        <span v-if="versionInfo" class="version-badge">v{{ versionInfo }}</span>
-        <button
-          v-if="releaseNotes && updateStatus === 'ready'"
-          class="notes-btn"
-          @click="showReleaseNotes = true"
-          :title="t('viewReleaseNotes')"
-        >
-          📋
-        </button>
+        <span v-if="versionInfo && (updateStatus === 'downloading' || updateStatus === 'ready')" class="version-badge">v{{ versionInfo }}</span>
         <button
           v-if="updateStatus === 'ready'"
           class="install-btn"
@@ -211,14 +237,19 @@ onUnmounted(() => {
           {{ t('install') }}
         </button>
       </div>
-      <!-- Release Notes 弹窗 -->
-      <div v-if="showReleaseNotes" class="release-notes-overlay" @click.self="showReleaseNotes = false">
+
+      <!-- 更新确认弹窗（含 release notes） -->
+      <div v-if="showUpdateDialog" class="release-notes-overlay" @click.self="dismissUpdate">
         <div class="release-notes-modal">
           <div class="release-notes-header">
-            <span>{{ t('whatsNew') }} v{{ versionInfo }}</span>
-            <span class="close-btn" @click="showReleaseNotes = false">✕</span>
+            <span class="dismiss-btn" @click="dismissUpdate">✕</span>
+            <span>{{ t('whatsNew') }} {{ versionInfo ? 'v' + versionInfo : '' }}</span>
+            <span class="confirm-btn" @click="confirmDownload" :title="t('confirmUpdate')">✅</span>
           </div>
-          <div class="release-notes-content" v-html="formatReleaseNotes(releaseNotes)"></div>
+          <div v-if="releaseNotes" class="release-notes-content" v-html="formatReleaseNotes(releaseNotes)"></div>
+          <div v-else class="release-notes-content">
+            <p class="no-notes">{{ t('newVersionFoundGeneric') }}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -235,7 +266,7 @@ onUnmounted(() => {
   justify-content: space-between;
   position: relative;
   padding: 10px 20px 20px 20px;
-  background-color: rgba(31, 34, 46, 0.85); /* 半透明暗色背景 */
+  background-color: rgba(31, 34, 46, 0.85);
   border-radius: 16px;
   overflow: hidden;
   box-sizing: border-box;
@@ -291,12 +322,8 @@ onUnmounted(() => {
 }
 
 @keyframes logo-rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .text {
@@ -312,19 +339,19 @@ onUnmounted(() => {
   gap: 6px;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.6);
-  font-family: inherit;
   margin: 0;
   padding: 0;
 }
 
 .app-version {
+  position: relative;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  background-color: rgba(255, 255, 255, 0.08); /* 淡淡的底色 */
-  border-radius: 14px; /* 圆角胶囊形状 */
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s ease;
   color: rgba(255, 255, 255, 0.8);
@@ -335,6 +362,26 @@ onUnmounted(() => {
   color: #fff;
   border-color: rgba(255, 255, 255, 0.3);
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+}
+
+.app-version.has-update {
+  border-color: rgba(46, 204, 113, 0.4);
+}
+
+.update-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 6px;
+  background-color: #2ecc71;
+  border-radius: 50%;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.3); }
 }
 
 .update-icon {
@@ -380,22 +427,6 @@ onUnmounted(() => {
   background: rgba(46, 204, 113, 0.4);
 }
 
-.notes-btn {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: transparent;
-  cursor: pointer;
-  opacity: 0.7;
-  transition: all 0.2s;
-}
-
-.notes-btn:hover {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
-}
-
 .version-badge {
   font-size: 10px;
   padding: 1px 6px;
@@ -404,7 +435,7 @@ onUnmounted(() => {
   color: #2ecc71;
 }
 
-/* Release Notes 弹窗样式 */
+/* 更新确认弹窗 */
 .release-notes-overlay {
   position: fixed;
   top: 0;
@@ -424,7 +455,7 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   width: 280px;
-  max-height: 200px;
+  max-height: 220px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -436,26 +467,33 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 12px;
   font-weight: bold;
   color: #fff;
+  flex-shrink: 0;
 }
 
-.close-btn {
+.dismiss-btn,
+.confirm-btn {
   cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
 }
 
-.close-btn:hover {
-  opacity: 1;
+.dismiss-btn:hover,
+.confirm-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .release-notes-content {
-  padding: 12px 14px;
+  padding: 10px 14px;
   overflow-y: auto;
   font-size: 11px;
   line-height: 1.6;
@@ -474,7 +512,7 @@ onUnmounted(() => {
 .release-notes-content h2,
 .release-notes-content h3,
 .release-notes-content h4 {
-  margin: 8px 0 4px;
+  margin: 6px 0 3px;
   color: #2ecc71;
 }
 
@@ -483,7 +521,7 @@ onUnmounted(() => {
 .release-notes-content h4 { font-size: 12px; }
 
 .release-notes-content p {
-  margin: 4px 0;
+  margin: 3px 0;
 }
 
 .release-notes-content li {
@@ -491,14 +529,13 @@ onUnmounted(() => {
   list-style-type: disc;
 }
 
+.no-notes {
+  text-align: center;
+  color: #aaa;
+}
+
 @keyframes modalSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
