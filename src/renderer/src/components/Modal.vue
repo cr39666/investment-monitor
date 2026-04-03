@@ -18,7 +18,6 @@ let shakeTimer: ReturnType<typeof setTimeout> | null = null
 let resolvePromise: ((value: any) => void) | null = null
 
 const priceInput = ref<HTMLInputElement | null>(null)
-const qtyInput = ref<HTMLInputElement | null>(null)
 
 // 解析 modalMessage 中的股票名称和当前价格
 const parsedMessage = computed(() => {
