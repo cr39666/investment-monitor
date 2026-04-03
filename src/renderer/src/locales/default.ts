@@ -33,7 +33,7 @@ export default {
   newVersionAvailable: 'New version available',
   downloading: 'Downloading...',
   upToDate: 'Up to date',
-  updateError: 'Update error',
+  updateError: 'Update error,please try again',
   readyToInstall: 'Ready to install',
   install: 'Install',
   viewReleaseNotes: '查看更新内容 View Release Notes',
