@@ -10,7 +10,7 @@ export default {
   clickToSet: 'Click to set',
   language: 'Language',
   showBallPnl: 'Ball Show Daily PnL',
-  ballDisplayMode: '悬浮球显示金额',
+  ballDisplayMode: 'Ball Display Mode',
   ballModeStock: '盈亏',
   ballModeGold: '金价',
   ballModeNone: '关',
@@ -18,12 +18,16 @@ export default {
   english: 'English',
   chinese: '中文',
   default: 'Default',
+  appVersion: 'Version',
 
   // About.vue
   investment: 'A-shares & Gold & Funds',
   monitor: 'investment monitor — designed by',
   designedBy: '',
   clickToShrink: 'Click to shrink to ball',
+  newVersionFound: '检测到新版本 v{version}，查看更新',
+  newVersionFoundGeneric: '检测到新版本，查看更新',
+  confirmUpdate: '下载更新',
   checkUpdates: 'Check for updates',
   checking: 'Checking...',
   newVersionAvailable: 'New version available',
@@ -114,9 +118,6 @@ export default {
   metalGold: 'XAU',
   metalSilver: 'XAG',
   fetchError: '数据获取失败，稍后再看',
-  newVersionFound: '新版本 v{version} 已发布，请手动更新',
-  newVersionFoundGeneric: '发现新版本，请手动更新',
-  confirmUpdate: '下载更新',
   buyGold: '买入黄金',
   sellGold: '卖出黄金',
   buy: '买入',
@@ -151,7 +152,6 @@ export default {
   viewGoldHolding: '查看黄金持仓',
   collapseGoldHolding: '收起黄金持仓',
   clickToTogglePnL: '点击切换盈亏显示',
-
 
   // FundView.vue
   noFunds: 'No Funds',

@@ -8,11 +8,30 @@ import { getLastMainView } from '../router'
 
 const { t, locale } = useI18n()
 const router = useRouter()
+// @ts-ignore
+import pkg from '../../../../package.json'
+const version = pkg.version
+
 const containerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 const ballAlwaysOnTop = ref(true)
 const windowAlwaysOnTop = ref(false)
+
+// 更新状态
+const hasPendingUpdate = ref(false)
+const isNewerVersion = (newVer: string, oldVer: string): boolean => {
+  if (!newVer || !oldVer) return false
+  const v1Parts = newVer.split('.').map(Number)
+  const v2Parts = oldVer.split('.').map(Number)
+  for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+    const v1 = v1Parts[i] || 0
+    const v2 = v2Parts[i] || 0
+    if (v1 > v2) return true
+    if (v1 < v2) return false
+  }
+  return false
+}
 
 // 悬浮球显示模式：'stock'=股票盈亏, 'gold'=黄金实时价, 'none'=不显示
 const ballDisplayMode = ref('stock')
@@ -147,6 +166,17 @@ onMounted(async () => {
     globalHotkey.value = hotkeySaved
   }
 
+  // 检测更新状态 (用于设置页下方的绿点提示)
+  const pendingRaw = localStorage.getItem('pending_update')
+  if (pendingRaw) {
+    try {
+      const pending = JSON.parse(pendingRaw)
+      if (pending.version && isNewerVersion(pending.version, version)) {
+        hasPendingUpdate.value = true
+      }
+    } catch { /* ignore */ }
+  }
+
   window.addEventListener('keydown', handleKeyDown)
 
   await nextTick()
@@ -221,6 +251,13 @@ onUnmounted(() => {
           <span v-else class="placeholder">{{ t('clickToSet') }}</span>
         </div>
       </div>
+      <div class="setting-item version-item" @click="goToAbout">
+        <span class="label">{{ t('appVersion') }}</span>
+        <div class="version-display">
+          v{{ version }}
+          <span v-if="hasPendingUpdate" class="update-dot"></span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -267,7 +304,7 @@ onUnmounted(() => {
 }
 
 .setting-container {
-  width: 250px;
+  width: 260px;
   background-color: rgba(31, 34, 46, 0.9);
   backdrop-filter: blur(10px);
   border-radius: 12px;
@@ -345,5 +382,39 @@ onUnmounted(() => {
 .lang-divider {
   margin: 0 6px;
   color: rgba(255, 255, 255, 0.3);
+}
+
+.version-item {
+  cursor: pointer;
+  transition: opacity 0.2s;
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.version-item:hover {
+  opacity: 0.8;
+}
+
+.version-display {
+  position: relative;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.update-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #2ecc71;
+  border-radius: 50%;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.3); }
 }
 </style>

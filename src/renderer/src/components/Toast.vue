@@ -6,6 +6,7 @@ type ToastType = 'info' | 'warn' | 'success' | 'fail' | 'alert'
 interface ToastItem {
   message: string
   type: ToastType
+  onClick?: () => void
 }
 
 const alertQueue = ref<ToastItem[]>([])
@@ -15,10 +16,10 @@ const msg = ref('')
 const toastType = ref<ToastType>('info')
 let timer: ReturnType<typeof setTimeout> | null = null
 
-const show = (message: string, type: ToastType = 'info', duration = 2000) => {
+const show = (message: string, type: ToastType = 'info', duration = 2000, onClick?: () => void) => {
   // alert 类型加入队列
   if (type === 'alert') {
-    alertQueue.value.push({ message, type })
+    alertQueue.value.push({ message, type, onClick })
     // 如果当前没有显示中的alert，开始显示队列
     if (!currentAlert.value) {
       showNextAlert()
@@ -48,6 +49,15 @@ const showNextAlert = () => {
   msg.value = nextAlert.message
   toastType.value = nextAlert.type
   isVisible.value = true
+}
+
+const handleClick = () => {
+  if (toastType.value === 'alert') {
+    if (currentAlert.value?.onClick) {
+      currentAlert.value.onClick()
+    }
+    hide()
+  }
 }
 
 const hide = () => {
@@ -91,7 +101,7 @@ const queueInfo = computed(() =>
       <div
         v-if="isVisible"
         :class="['toast-container', typeClass, { 'toast-interactive': toastType === 'alert' }]"
-        @click="toastType === 'alert' && hide()"
+        @click="handleClick"
       >
         <span class="toast-message"><span class="toast-icon">{{ icon }}</span>{{ msg }}</span>
         <span v-if="toastType === 'alert'" class="toast-queue">{{ queueInfo }}</span>

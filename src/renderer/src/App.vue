@@ -7,7 +7,24 @@ import { getLastMainView } from './router'
 
 const { t } = useI18n()
 const router = useRouter()
+// @ts-ignore
+import pkg from '../../../package.json'
+const version = pkg.version
+
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
+
+const isNewerVersion = (newVer: string, oldVer: string): boolean => {
+  if (!newVer || !oldVer) return false
+  const v1Parts = newVer.split('.').map(Number)
+  const v2Parts = oldVer.split('.').map(Number)
+  for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+    const v1 = v1Parts[i] || 0
+    const v2 = v2Parts[i] || 0
+    if (v1 > v2) return true
+    if (v1 < v2) return false
+  }
+  return false
+}
 
 const handleNavigate = (_event, path: string) => {
   router.push(path)
@@ -18,9 +35,17 @@ const handleNavigateBack = () => {
 }
 
 const handleUpdateAvailable = (_event, info: any) => {
-  const version = info?.version || ''
+  const newVersion = info?.version || ''
+  
+  // 核心修复：只有新版本确实高于当前版本时，才记录并提示
+  if (!isNewerVersion(newVersion, version)) {
+    // 如果已经升级，则清理之前的残留记录
+    localStorage.removeItem('pending_update')
+    return
+  }
+  
   // 存储更新信息到 localStorage，供 About 页读取
-  const updateData: any = { version }
+  const updateData: any = { version: newVersion }
   if (info?.releaseNotes) {
     updateData.releaseNotes = typeof info.releaseNotes === 'string'
       ? info.releaseNotes
@@ -30,10 +55,13 @@ const handleUpdateAvailable = (_event, info: any) => {
   }
   localStorage.setItem('pending_update', JSON.stringify(updateData))
 
-  const msg = version
-    ? t('newVersionFound', { version })
+  const msg = newVersion
+    ? t('newVersionFound', { version: newVersion })
     : t('newVersionFoundGeneric')
-  toastRef.value?.show(msg, 'alert')
+  
+  toastRef.value?.show(msg, 'alert', 5000, () => {
+    router.push('/about')
+  })
 }
 
 onMounted(() => {

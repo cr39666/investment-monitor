@@ -97,16 +97,37 @@ const syncWindowSize = () => {
   window.electron.ipcRenderer.send('resize-window', width, height)
 }
 
+const isNewerVersion = (newVer: string, oldVer: string): boolean => {
+  if (!newVer || !oldVer) return false
+  const v1Parts = newVer.split('.').map(Number)
+  const v2Parts = oldVer.split('.').map(Number)
+  for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+    const v1 = v1Parts[i] || 0
+    const v2 = v2Parts[i] || 0
+    if (v1 > v2) return true
+    if (v1 < v2) return false
+  }
+  return false
+}
+
 onMounted(async () => {
   // 读取启动时检测到的更新信息
   const pendingRaw = localStorage.getItem('pending_update')
   if (pendingRaw) {
     try {
       const pending = JSON.parse(pendingRaw)
-      hasPendingUpdate.value = true
-      versionInfo.value = pending.version || ''
-      releaseNotes.value = pending.releaseNotes || ''
-    } catch { /* ignore */ }
+      if (pending.version && isNewerVersion(pending.version, version)) {
+        hasPendingUpdate.value = true
+        versionInfo.value = pending.version || ''
+        releaseNotes.value = pending.releaseNotes || ''
+      } else {
+        // 如果版本已经一致或更低，清理缓存，不显示绿点
+        localStorage.removeItem('pending_update')
+        hasPendingUpdate.value = false
+      }
+    } catch { 
+      localStorage.removeItem('pending_update')
+    }
   }
 
   // 监听更新事件 — update-available 不再自动下载

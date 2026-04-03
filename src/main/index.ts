@@ -110,11 +110,16 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
 
-    // 启动后延迟自动检查更新
+    // 启动后延迟自动检查更新并启动周期性检查
     if (app.isPackaged) {
       setTimeout(() => {
+        // 初始检查
         autoUpdater.checkForUpdates()
-      }, 3000)
+        // 之后每 4 小时静默检查一次新版本 (1000 * 60 * 60 * 4)
+        setInterval(() => {
+          autoUpdater.checkForUpdates()
+        }, 14400000)
+      }, 2000)
     }
   })
 
@@ -193,7 +198,13 @@ if (app.isPackaged && process.platform === 'win32') {
       const result = execSync(`reg query "${regKey}" /v InstallLocation`, { encoding: 'utf-8' })
       const match = result.match(/REG_SZ\s+(.+)/)
       if (match && match[1].trim().replace(/\\$/, '') !== currentDir) {
+        // 更新安装位置
         execSync(`reg add "${regKey}" /v InstallLocation /t REG_SZ /d "${currentDir}\\" /f`, { encoding: 'utf-8' })
+        // 同时更新卸载程序路径，有助于安装程序 UI 在更新时识别当前实际路径
+        const uninstallerName = 'Uninstall AssetPulse.exe'
+        const uninstallerPath = join(currentDir, uninstallerName)
+        execSync(`reg add "${regKey}" /v UninstallString /t REG_SZ /d "\\"${uninstallerPath}\\"" /f`, { encoding: 'utf-8' })
+        execSync(`reg add "${regKey}" /v DisplayIcon /t REG_SZ /d "${exePath},0" /f`, { encoding: 'utf-8' })
       }
     } catch {
       // 该注册表项不存在，跳过
@@ -218,7 +229,7 @@ app.on('second-instance', () => {
 
 app.whenReady().then(() => {
   if (process.platform === 'win32') {
-    app.setAppUserModelId('com.electron')
+    app.setAppUserModelId('com.electron.app')
     // 确保更新安装到当前 exe 所在目录，而非注册表中可能过时的旧路径
     ;(autoUpdater as any).installDirectory = dirname(app.getPath('exe'))
   }
