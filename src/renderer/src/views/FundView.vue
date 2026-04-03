@@ -32,6 +32,7 @@ const quotes = ref<Record<string, FundQuote>>({})
 let timer: ReturnType<typeof setInterval> | null = null
 
 const containerRef = ref<HTMLElement | null>(null)
+const fundInputRef = ref<HTMLInputElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 // 隐私模式
@@ -66,6 +67,7 @@ const openEditModal = async (
     })
     inputCode.value = ''
     toastRef.value?.show(t('fundAdded'), 'success')
+    nextTick(() => fundInputRef.value?.focus())
   } else {
     const fund = funds.value.find((f) => f.code === result.code)
     if (fund) {
@@ -555,6 +557,7 @@ onUnmounted(() => {
             :placeholder="t('fundCode')"
             @keyup.enter="addFund"
             class="fund-input"
+            ref="fundInputRef"
           />
           <button class="add-btn" @click="addFund">➕</button>
         </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Toast from './Toast.vue'
 
@@ -30,6 +30,7 @@ const tradeMode = ref<'grams' | 'amount'>('grams')
 const tradeGrams = ref('')
 const tradeAmount = ref('')
 const tradePrice = ref('') // 成本均价
+const mainInput = ref<HTMLInputElement | null>(null)
 
 // 初始化和重置
 watch(() => props.show, (newShow) => {
@@ -38,6 +39,10 @@ watch(() => props.show, (newShow) => {
     tradeAmount.value = ''
     tradePrice.value = props.mode === 'init' ? '' : (props.holdingPricePerGram?.toFixed(2) || '')
     tradeMode.value = 'grams'
+    nextTick(() => {
+      mainInput.value?.focus()
+      mainInput.value?.select()
+    })
   }
 }, { immediate: true })
 
@@ -130,7 +135,7 @@ const confirm = () => {
               class="modal-input"
               :placeholder="t('enterGrams')"
               step="0.0001"
-              autofocus
+              ref="mainInput"
             />
             <input
               v-else
@@ -139,7 +144,7 @@ const confirm = () => {
               class="modal-input"
               :placeholder="t('enterAmount')"
               step="0.01"
-              autofocus
+              ref="mainInput"
             />
             <label>{{ tradeMode === 'grams' ? t('gramsLabel') : t('valLabel') }}</label>
           </div>

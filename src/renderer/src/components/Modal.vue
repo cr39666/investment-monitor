@@ -59,8 +59,9 @@ const open = (
   isVisible.value = true
 
   nextTick(() => {
-    if (type === 'add') {
-      qtyInput.value?.focus()
+    if (modalType.value === 'alert') {
+      priceInput.value?.focus()
+      priceInput.value?.select()
     } else {
       priceInput.value?.focus()
       priceInput.value?.select()

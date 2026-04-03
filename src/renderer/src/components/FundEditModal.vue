@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -19,6 +19,7 @@ const editShares = ref(0)
 const editName = ref('')
 const editBuyDate = ref('')
 const editIsNew = ref(true)
+const costInput = ref<HTMLInputElement | null>(null)
 
 let resolvePromise: ((result: FundEditResult | null) => void) | null = null
 
@@ -41,6 +42,11 @@ const open = (
   editBuyDate.value = buyDate
   editIsNew.value = isNew
   visible.value = true
+
+  nextTick(() => {
+    costInput.value?.focus()
+    costInput.value?.select()
+  })
 
   return new Promise((resolve) => {
     resolvePromise = resolve
@@ -83,11 +89,18 @@ defineExpose({ open })
           <div class="edit-name">{{ editName }}</div>
           <div class="edit-row">
             <label>{{ t('fundCostNav') }}</label>
-            <input v-model.number="editCost" type="number" step="0.0001" class="edit-input" />
+            <input 
+              v-model.number="editCost" 
+              type="number" 
+              step="0.0001" 
+              class="edit-input" 
+              ref="costInput"
+              @keyup.enter="handleConfirm"
+            />
           </div>
           <div class="edit-row">
             <label>{{ t('fundShares') }}</label>
-            <input v-model.number="editShares" type="number" step="100" class="edit-input" />
+            <input v-model.number="editShares" type="number" step="100" class="edit-input" @keyup.enter="handleConfirm" />
           </div>
           <div class="edit-row">
             <label>{{ t('fundBuyDate') }}</label>

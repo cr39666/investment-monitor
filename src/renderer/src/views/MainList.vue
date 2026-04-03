@@ -46,6 +46,7 @@ const quotes = ref<Record<string, StockQuote>>({})
 let timer: ReturnType<typeof setInterval> | null = null
 
 const containerRef = ref<HTMLElement | null>(null)
+const stockInputRef = ref<HTMLInputElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 // 前往黄金页面
@@ -326,6 +327,7 @@ const addStock = async () => {
     inputCode.value = ''
     fetchQuotes(true)
     toastRef.value?.show(t('stockAdded'), 'success')
+    nextTick(() => stockInputRef.value?.focus())
   }
 }
 
@@ -935,6 +937,7 @@ onUnmounted(() => {
             :placeholder="t('code')"
             @keyup.enter="addStock"
             class="stock-input"
+            ref="stockInputRef"
           />
           <button class="add-btn" @click="addStock">➕</button>
         </div>
