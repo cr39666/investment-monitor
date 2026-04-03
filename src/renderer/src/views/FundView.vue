@@ -731,9 +731,16 @@ onUnmounted(() => {
 
 .row-selected {
   background-color: rgba(46, 204, 113, 0.15) !important;
+  border-radius: 6px;
 }
 .row-selected td {
   border-bottom-color: rgba(46, 204, 113, 0.3);
+}
+.row-selected td:first-child {
+  border-radius: 6px 0 0 6px;
+}
+.row-selected td:last-child {
+  border-radius: 0 6px 6px 0;
 }
 
 .clickable-cell {
