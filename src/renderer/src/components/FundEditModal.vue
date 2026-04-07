@@ -65,7 +65,7 @@ const handleConfirm = () => {
   resolvePromise = null
 }
 
-const handleCancel = () => {
+const handleCancel = (): void => {
   visible.value = false
   resolvePromise?.(null)
   resolvePromise = null
@@ -89,18 +89,24 @@ defineExpose({ open })
           <div class="edit-name">{{ editName }}</div>
           <div class="edit-row">
             <label>{{ t('fundCostNav') }}</label>
-            <input 
-              v-model.number="editCost" 
-              type="number" 
-              step="0.0001" 
-              class="edit-input" 
+            <input
               ref="costInput"
+              v-model.number="editCost"
+              type="number"
+              step="0.0001"
+              class="edit-input"
               @keyup.enter="handleConfirm"
             />
           </div>
           <div class="edit-row">
             <label>{{ t('fundShares') }}</label>
-            <input v-model.number="editShares" type="number" step="100" class="edit-input" @keyup.enter="handleConfirm" />
+            <input
+              v-model.number="editShares"
+              type="number"
+              step="100"
+              class="edit-input"
+              @keyup.enter="handleConfirm"
+            />
           </div>
           <div class="edit-row">
             <label>{{ t('fundBuyDate') }}</label>

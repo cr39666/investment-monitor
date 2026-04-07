@@ -36,29 +36,30 @@ const handleNavigateBack = () => {
 
 const handleUpdateAvailable = (_event, info: any) => {
   const newVersion = info?.version || ''
-  
+
   // 核心修复：只有新版本确实高于当前版本时，才记录并提示
   if (!isNewerVersion(newVersion, version)) {
     // 如果已经升级，则清理之前的残留记录
     localStorage.removeItem('pending_update')
     return
   }
-  
+
   // 存储更新信息到 localStorage，供 About 页读取
   const updateData: any = { version: newVersion }
   if (info?.releaseNotes) {
-    updateData.releaseNotes = typeof info.releaseNotes === 'string'
-      ? info.releaseNotes
-      : Array.isArray(info.releaseNotes)
-        ? info.releaseNotes.map((n: any) => n.note).join('\n')
-        : ''
+    updateData.releaseNotes =
+      typeof info.releaseNotes === 'string'
+        ? info.releaseNotes
+        : Array.isArray(info.releaseNotes)
+          ? info.releaseNotes.map((n: any) => n.note).join('\n')
+          : ''
   }
   localStorage.setItem('pending_update', JSON.stringify(updateData))
 
   const msg = newVersion
     ? t('newVersionFound', { version: newVersion })
     : t('newVersionFoundGeneric')
-  
+
   toastRef.value?.show(msg, 'alert', 5000, () => {
     router.push('/about')
   })

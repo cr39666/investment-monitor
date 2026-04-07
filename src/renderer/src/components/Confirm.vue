@@ -36,9 +36,11 @@ defineExpose({ open })
     <div v-if="isVisible" class="confirm-overlay" @click.self="handleCancel">
       <div class="confirm-content">
         <div class="confirm-header">
-          <span class="confirm-btn-icon cancel" @click="handleCancel" :title="t('cancel')">❌</span>
+          <span class="confirm-btn-icon cancel" :title="t('cancel')" @click="handleCancel">❌</span>
           <span class="confirm-title">{{ confirmTitle }}</span>
-          <span class="confirm-btn-icon confirm" @click="handleConfirm" :title="t('confirm')">✅</span>
+          <span class="confirm-btn-icon confirm" :title="t('confirm')" @click="handleConfirm"
+            >✅</span
+          >
         </div>
         <div class="confirm-body">
           <p class="confirm-msg">{{ confirmMessage }}</p>

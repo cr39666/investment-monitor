@@ -1,4 +1,12 @@
+# 单引号
 singleQuote: true
+# 分号
 semi: false
+# 代码行长度限制
 printWidth: 100
+# 对象或数组的最后一个元素是否需要逗号
 trailingComma: none
+# 代码缩进
+tabWidth: 2
+# 对象花括号里加空格
+bracketSpacing: true

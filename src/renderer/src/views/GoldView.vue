@@ -35,7 +35,6 @@ const displayFetchVersion = ref(0)
 const isSwitchingCurrency = ref(false)
 let timer: ReturnType<typeof setInterval> | null = null
 
-
 const containerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
@@ -102,7 +101,6 @@ const toggleCurrency = async () => {
   }
 }
 
-
 // 获取单个金属价格
 const fetchPrice = async (symbol: string, currencyParam?: Currency): Promise<number | null> => {
   try {
@@ -143,7 +141,6 @@ const fetchPrices = async (displayCurrency: Currency = currency.value, commitCur
   fetchError.value = gold === null && silver === null && goldCNY === null
 }
 
-
 const OZ_TO_GRAM = 31.1035
 
 // 格式化价格（CNY 模式下换算为克价）
@@ -151,11 +148,14 @@ const formatPrice = (price: number | null): string => {
   if (price === null || isNaN(price)) return '--'
   const displayPrice = currency.value === 'CNY' ? price / OZ_TO_GRAM : price
   const decimals = currency.value === 'CNY' ? 2 : 2
-  return displayPrice.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+  return displayPrice.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  })
 }
 
 // 价格单位
-const priceUnit = (): string => currency.value === 'CNY' ? '¥/g' : '$/oz'
+const priceUnit = (): string => (currency.value === 'CNY' ? '¥/g' : '$/oz')
 
 // 打开买入窗口
 const openBuyModal = () => {
@@ -207,9 +207,12 @@ const toggleHoldingDrawer = () => {
 // closeHoldingDrawer removed as expansion is toggled via header
 
 // 处理交易确认
-const handleTradeConfirm = (action: 'buy' | 'sell' | 'init', data: { grams: number; avgPrice?: number }) => {
+const handleTradeConfirm = (
+  action: 'buy' | 'sell' | 'init',
+  data: { grams: number; avgPrice?: number }
+) => {
   // 交易单价优先使用用户输入的值，否则回退到当前市价
-  const transactionPrice = data.avgPrice || (holdingPricePerGramCNY.value || 0)
+  const transactionPrice = data.avgPrice || holdingPricePerGramCNY.value || 0
 
   if (action === 'init') {
     // 初始化持仓
@@ -296,7 +299,9 @@ onMounted(async () => {
       } else if (typeof parsed === 'boolean') {
         visibleModules.value = parsed ? ['stock', 'gold', 'fund'] : []
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   } else {
     const fundSaved = localStorage.getItem('show_fund')
     if (fundSaved !== null) {
@@ -332,21 +337,23 @@ onUnmounted(() => {
   <div ref="containerRef" class="gold-container">
     <DragHandle>
       <template #left>
-        <button class="nav-btn" @click="goToBall" :title="t('backToBall')">
+        <button class="nav-btn" :title="t('backToBall')" @click="goToBall">
           <img src="../assets/electron.svg" class="nav-icon" alt="ball" />
         </button>
       </template>
       <template #right>
-        <button class="nav-btn" @click="goToSetting" :title="t('goToSetting')">
-          ⚙️
-        </button>
+        <button class="nav-btn" :title="t('goToSetting')" @click="goToSetting">⚙️</button>
       </template>
     </DragHandle>
 
     <div class="gold-content">
       <!-- 黄金卡片 (整合持仓) -->
       <div class="metal-card" :class="{ expanded: isHoldingDrawerOpen }">
-        <div class="metal-card-header" @click="toggleHoldingDrawer" :title="isHoldingDrawerOpen ? t('collapseGoldHolding') : t('viewGoldHolding')">
+        <div
+          class="metal-card-header"
+          :title="isHoldingDrawerOpen ? t('collapseGoldHolding') : t('viewGoldHolding')"
+          @click="toggleHoldingDrawer"
+        >
           <div class="metal-row gold-row">
             <span class="metal-label">
               🥇<span class="metal-label-text">{{ t('metalGold') }}</span>
@@ -371,11 +378,21 @@ onUnmounted(() => {
                 <span class="holding-label">{{ t('holdingGrams') }}</span>
                 <span class="holding-value">{{ goldHolding.grams.toFixed(4) }}g</span>
               </div>
-              <div class="holding-row pnl-toggle-row" @click="togglePnLDisplay" :title="t('clickToTogglePnL')">
-                <span class="holding-label">{{ showPnLType === 'value' ? t('goldTotalPnl') : t('goldYieldRate') }}</span>
-                <span class="holding-value" :class="{ profit: calculateGoldTotalPnL > 0, loss: calculateGoldTotalPnL < 0 }">
+              <div
+                class="holding-row pnl-toggle-row"
+                :title="t('clickToTogglePnL')"
+                @click="togglePnLDisplay"
+              >
+                <span class="holding-label">{{
+                  showPnLType === 'value' ? t('goldTotalPnl') : t('goldYieldRate')
+                }}</span>
+                <span
+                  class="holding-value"
+                  :class="{ profit: calculateGoldTotalPnL > 0, loss: calculateGoldTotalPnL < 0 }"
+                >
                   <template v-if="showPnLType === 'value'">
-                    ¥{{ calculateGoldTotalPnL >= 0 ? '+' : '' }}{{ calculateGoldTotalPnL.toFixed(2) }}
+                    ¥{{ calculateGoldTotalPnL >= 0 ? '+' : ''
+                    }}{{ calculateGoldTotalPnL.toFixed(2) }}
                   </template>
                   <template v-else>
                     {{ calculateGoldYield >= 0 ? '+' : '' }}{{ calculateGoldYield.toFixed(2) }}%
@@ -422,22 +439,32 @@ onUnmounted(() => {
 
     <div class="gold-footer">
       <div class="footer-left">
-        <button v-if="visibleModules.includes('stock')" class="switch-btn stock-btn" @click="goToStockList" :title="t('switchToStock')">
+        <button
+          v-if="visibleModules.includes('stock')"
+          class="switch-btn stock-btn"
+          :title="t('switchToStock')"
+          @click="goToStockList"
+        >
           📈
         </button>
-        <button v-if="visibleModules.includes('fund')" class="switch-btn fund-btn" @click="goToFund" :title="t('switchToFund')">
+        <button
+          v-if="visibleModules.includes('fund')"
+          class="switch-btn fund-btn"
+          :title="t('switchToFund')"
+          @click="goToFund"
+        >
           💹
         </button>
         <button
           class="switch-btn currency-toggle-btn"
           :disabled="isSwitchingCurrency"
-          @click="toggleCurrency"
           :title="t('toggleCurrency')"
+          @click="toggleCurrency"
         >
           {{ currency === 'CNY' ? '¥' : '$' }}
         </button>
       </div>
-      
+
       <div class="footer-center">
         <div v-if="isHoldingDrawerOpen && goldHolding" class="action-group">
           <button class="action-btn add-btn" @click="openBuyModal">
@@ -454,7 +481,9 @@ onUnmounted(() => {
 
       <div class="footer-right">
         <span v-if="fetchError" class="fetch-error-text" :title="t('fetchError')">⚠</span>
-        <span class="lock-icon" @click="toggleCensor" :title="t('toggleHide')">{{ isCensored ? '🔒' : '🔓' }}</span>
+        <span class="lock-icon" :title="t('toggleHide')" @click="toggleCensor">{{
+          isCensored ? '🔒' : '🔓'
+        }}</span>
       </div>
     </div>
 
@@ -532,7 +561,7 @@ onUnmounted(() => {
 
 /* 整合卡片样式 */
 .metal-card {
-  background-color:rgba(255, 215, 0, 0.05);
+  background-color: rgba(255, 215, 0, 0.05);
   border: 1px solid rgba(255, 215, 0, 0.15);
   border-radius: 12px;
   overflow: hidden;
@@ -540,12 +569,12 @@ onUnmounted(() => {
 }
 
 .metal-card:hover {
-  background-color:rgba(255, 215, 0, 0.08);
+  background-color: rgba(255, 215, 0, 0.08);
   border-color: rgba(255, 215, 0, 0.2);
 }
 
 .metal-card.expanded {
-  background-color:rgba(255, 215, 0, 0.05);
+  background-color: rgba(255, 215, 0, 0.05);
   border-color: rgba(255, 215, 0, 0.2);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
@@ -585,8 +614,14 @@ onUnmounted(() => {
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .other-metals {
@@ -624,7 +659,6 @@ onUnmounted(() => {
   margin-left: 8px;
   font-size: 12px;
 }
-
 
 .metal-price {
   font-size: 14px;
@@ -746,7 +780,9 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-.footer-left, .footer-center, .footer-right {
+.footer-left,
+.footer-center,
+.footer-right {
   display: flex;
   align-items: center;
   gap: 4px;

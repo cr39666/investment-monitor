@@ -106,7 +106,7 @@ export default {
   clearPosition: 'Sell All',
   clearPositionTitle: 'Sell All Confirmation',
   clearPositionConfirm: 'Sell all {amount} lot(s) of {name} at {price}?',
-  isTodayNewPosition: 'Today\'s New Position',
+  isTodayNewPosition: "Today's New Position",
 
   // Confirm.vue
   confirm: 'Confirm',
@@ -158,7 +158,6 @@ export default {
   collapseGoldHolding: 'Collapse Gold Holding',
   clickToTogglePnL: 'Click to toggle PnL display',
 
-
   // FundView.vue
 
   noFunds: 'No funds',
@@ -177,5 +176,5 @@ export default {
   clickToEdit: 'Click to edit position',
   holdingDays: 'Holding Days',
   yieldRate: 'Yield Rate',
-  fundBuyDate: 'Buy Date',
+  fundBuyDate: 'Buy Date'
 }

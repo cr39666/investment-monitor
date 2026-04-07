@@ -19,10 +19,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  confirm: [action: 'buy' | 'sell' | 'init', data: {
-    grams: number
-    avgPrice?: number
-  }]
+  confirm: [
+    action: 'buy' | 'sell' | 'init',
+    data: {
+      grams: number
+      avgPrice?: number
+    }
+  ]
 }>()
 
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -33,18 +36,22 @@ const tradePrice = ref('') // 成本均价
 const mainInput = ref<HTMLInputElement | null>(null)
 
 // 初始化和重置
-watch(() => props.show, (newShow) => {
-  if (newShow) {
-    tradeGrams.value = ''
-    tradeAmount.value = ''
-    tradePrice.value = props.mode === 'init' ? '' : (props.holdingPricePerGram?.toFixed(2) || '')
-    tradeMode.value = 'grams'
-    nextTick(() => {
-      mainInput.value?.focus()
-      mainInput.value?.select()
-    })
-  }
-}, { immediate: true })
+watch(
+  () => props.show,
+  (newShow) => {
+    if (newShow) {
+      tradeGrams.value = ''
+      tradeAmount.value = ''
+      tradePrice.value = props.mode === 'init' ? '' : props.holdingPricePerGram?.toFixed(2) || ''
+      tradeMode.value = 'grams'
+      nextTick(() => {
+        mainInput.value?.focus()
+        mainInput.value?.select()
+      })
+    }
+  },
+  { immediate: true }
+)
 
 // 辅助计算结果 (仅用于显示提示)
 const calculationResult = computed(() => {
@@ -108,43 +115,43 @@ const confirm = () => {
     <div class="modal-content">
       <div class="modal-header">
         <span class="modal-btn" @click="close">❌</span>
-        <span>{{ mode === 'buy' ? t('addPos') : mode === 'sell' ? t('reducePos') : t('initHolding') }}</span>
+        <span>{{
+          mode === 'buy' ? t('addPos') : mode === 'sell' ? t('reducePos') : t('initHolding')
+        }}</span>
         <span class="modal-btn" @click="confirm">✔️</span>
       </div>
-      
+
       <div class="modal-body">
         <div class="modal-form">
           <!-- Tag-style Mode Switcher (Hidden in init mode) -->
           <div v-if="mode !== 'init'" class="mode-switcher">
-            <button 
-              :class="{ active: tradeMode === 'grams' }" 
-              @click="tradeMode = 'grams'"
-            >{{ t('grams') }}</button>
-            <button 
-              :class="{ active: tradeMode === 'amount' }" 
-              @click="tradeMode = 'amount'"
-            >{{ t('estimatedCost') }}</button>
+            <button :class="{ active: tradeMode === 'grams' }" @click="tradeMode = 'grams'">
+              {{ t('grams') }}
+            </button>
+            <button :class="{ active: tradeMode === 'amount' }" @click="tradeMode = 'amount'">
+              {{ t('estimatedCost') }}
+            </button>
           </div>
 
           <!-- Main Input (Grams or Value) -->
           <div class="modal-input-group">
             <input
               v-if="tradeMode === 'grams'"
-              type="number"
+              ref="mainInput"
               v-model="tradeGrams"
+              type="number"
               class="modal-input"
               :placeholder="t('enterGrams')"
               step="0.0001"
-              ref="mainInput"
             />
             <input
               v-else
-              type="number"
+              ref="mainInput"
               v-model="tradeAmount"
+              type="number"
               class="modal-input"
               :placeholder="t('enterAmount')"
               step="0.01"
-              ref="mainInput"
             />
             <label>{{ tradeMode === 'grams' ? t('gramsLabel') : t('valLabel') }}</label>
           </div>
@@ -152,23 +159,21 @@ const confirm = () => {
           <!-- Price Input (Avg Cost Price) -->
           <div class="modal-input-group">
             <input
-              type="number"
               v-model="tradePrice"
+              type="number"
               class="modal-input"
               :placeholder="t('avgCostPrice')"
               step="0.01"
               @keydown.enter="confirm"
             />
             <label>{{ t('avgCostPrice') }}</label>
-            
+
             <!-- Real-time Hint based on Price Input (Hidden in init mode) -->
-            <div class="inline-hint" v-if="mode !== 'init' && calculationResult">
+            <div v-if="mode !== 'init' && calculationResult" class="inline-hint">
               <template v-if="calculationResult.type === 'amount'">
                 ≈ ¥{{ calculationResult.value }}
               </template>
-              <template v-else>
-                ≈ {{ calculationResult.value }}g
-              </template>
+              <template v-else> ≈ {{ calculationResult.value }}g </template>
             </div>
           </div>
 
@@ -329,12 +334,22 @@ const confirm = () => {
 }
 
 @keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

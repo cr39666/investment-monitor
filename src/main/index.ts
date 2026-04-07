@@ -1,4 +1,13 @@
-import { app, shell, BrowserWindow, ipcMain, Tray, Menu, globalShortcut, Notification } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  Tray,
+  Menu,
+  globalShortcut,
+  Notification
+} from 'electron'
 import { join, dirname } from 'path'
 import { execSync } from 'child_process'
 import icon from '../../resources/icon.png?asset'
@@ -14,23 +23,52 @@ let windowAlwaysOnTop = false
 let currentLang: string = 'default'
 
 // 托盘菜单多语言文本
-const trayTexts: Record<string, { openMonitor: string; openBall: string; quit: string; tooltip: string }> = {
-  default: { openMonitor: 'Open Monitor', openBall: 'Open Ball', quit: 'Quit', tooltip: 'AssetPulse' },
+const trayTexts: Record<
+  string,
+  { openMonitor: string; openBall: string; quit: string; tooltip: string }
+> = {
+  default: {
+    openMonitor: 'Open Monitor',
+    openBall: 'Open Ball',
+    quit: 'Quit',
+    tooltip: 'AssetPulse'
+  },
   en: { openMonitor: 'Open Monitor', openBall: 'Open Ball', quit: 'Quit ', tooltip: 'AssetPulse' },
   zh: { openMonitor: '打开面板', openBall: '打开悬浮球', quit: '退出程序', tooltip: 'AssetPulse' }
 }
 
 // 悬浮球右键菜单多语言文本
-const ballMenuTexts: Record<string, {
-  hideBall: string
-  displayLabel: string
-  modeStock: string
-  modeGold: string
-  modeNone: string
-}> = {
-  default: { hideBall: 'Hide Ball', displayLabel: 'Display', modeStock: 'Stock PnL', modeGold: 'Gold Price', modeNone: 'Off' },
-  en: { hideBall: 'Hide Ball', displayLabel: 'Display', modeStock: 'Stock PnL', modeGold: 'Gold Price', modeNone: 'Off' },
-  zh: { hideBall: '隐藏悬浮球', displayLabel: '显示金额', modeStock: '股票盈亏', modeGold: '黄金价格', modeNone: '不显示' }
+const ballMenuTexts: Record<
+  string,
+  {
+    hideBall: string
+    displayLabel: string
+    modeStock: string
+    modeGold: string
+    modeNone: string
+  }
+> = {
+  default: {
+    hideBall: 'Hide Ball',
+    displayLabel: 'Display',
+    modeStock: 'Stock PnL',
+    modeGold: 'Gold Price',
+    modeNone: 'Off'
+  },
+  en: {
+    hideBall: 'Hide Ball',
+    displayLabel: 'Display',
+    modeStock: 'Stock PnL',
+    modeGold: 'Gold Price',
+    modeNone: 'Off'
+  },
+  zh: {
+    hideBall: '隐藏悬浮球',
+    displayLabel: '显示金额',
+    modeStock: '股票盈亏',
+    modeGold: '黄金价格',
+    modeNone: '不显示'
+  }
 }
 
 function applyAlwaysOnTop(w: number, h: number): void {
@@ -199,12 +237,19 @@ if (app.isPackaged && process.platform === 'win32') {
       const match = result.match(/REG_SZ\s+(.+)/)
       if (match && match[1].trim().replace(/\\$/, '') !== currentDir) {
         // 更新安装位置
-        execSync(`reg add "${regKey}" /v InstallLocation /t REG_SZ /d "${currentDir}\\" /f`, { encoding: 'utf-8' })
+        execSync(`reg add "${regKey}" /v InstallLocation /t REG_SZ /d "${currentDir}\\" /f`, {
+          encoding: 'utf-8'
+        })
         // 同时更新卸载程序路径，有助于安装程序 UI 在更新时识别当前实际路径
         const uninstallerName = 'Uninstall AssetPulse.exe'
         const uninstallerPath = join(currentDir, uninstallerName)
-        execSync(`reg add "${regKey}" /v UninstallString /t REG_SZ /d "\\"${uninstallerPath}\\"" /f`, { encoding: 'utf-8' })
-        execSync(`reg add "${regKey}" /v DisplayIcon /t REG_SZ /d "${exePath},0" /f`, { encoding: 'utf-8' })
+        execSync(
+          `reg add "${regKey}" /v UninstallString /t REG_SZ /d "\\"${uninstallerPath}\\"" /f`,
+          { encoding: 'utf-8' }
+        )
+        execSync(`reg add "${regKey}" /v DisplayIcon /t REG_SZ /d "${exePath},0" /f`, {
+          encoding: 'utf-8'
+        })
       }
     } catch {
       // 该注册表项不存在，跳过
@@ -231,7 +276,9 @@ app.whenReady().then(() => {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.electron.app')
     // 确保更新安装到当前 exe 所在目录，而非注册表中可能过时的旧路径
-    ;(autoUpdater as any).installDirectory = dirname(app.getPath('exe'))
+    ;(autoUpdater as unknown as { installDirectory: string }).installDirectory = dirname(
+      app.getPath('exe')
+    )
   }
 
   createTray()

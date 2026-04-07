@@ -26,6 +26,9 @@ export default defineConfig(
     rules: {
       'vue/require-default-prop': 'off',
       'vue/multi-word-component-names': 'off',
+      'vue/no-unused-components': 'warn',
+      'vue/no-multiple-template-root': 'off',
+      'vue/html-indent': ['error', 2],
       'vue/block-lang': [
         'error',
         {
@@ -33,7 +36,10 @@ export default defineConfig(
             lang: 'ts'
           }
         }
-      ]
+      ],
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off'
     }
   },
   eslintConfigPrettier

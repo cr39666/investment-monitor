@@ -63,12 +63,38 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
   // 忽略不适合作为快捷键的按键
   const ignoredKeys = [
-    'Tab', 'CapsLock', 'NumLock', 'ScrollLock',
-    'Insert', 'Delete', 'Home', 'End', 'PageUp', 'PageDown',
-    'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
-    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-    'Enter', 'Backspace', 'Space',
-    'ContextMenu', 'Pause', 'PrintScreen'
+    'Tab',
+    'CapsLock',
+    'NumLock',
+    'ScrollLock',
+    'Insert',
+    'Delete',
+    'Home',
+    'End',
+    'PageUp',
+    'PageDown',
+    'F1',
+    'F2',
+    'F3',
+    'F4',
+    'F5',
+    'F6',
+    'F7',
+    'F8',
+    'F9',
+    'F10',
+    'F11',
+    'F12',
+    'ArrowUp',
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'Enter',
+    'Backspace',
+    'Space',
+    'ContextMenu',
+    'Pause',
+    'PrintScreen'
   ]
   if (ignoredKeys.includes(e.key)) return
 
@@ -132,7 +158,7 @@ const toggleModule = (module: string) => {
       toastRef.value?.show(t('selectionRequired'), 'warn')
       return
     }
-    showModules.value = showModules.value.filter(m => m !== module)
+    showModules.value = showModules.value.filter((m) => m !== module)
   } else {
     showModules.value.push(module)
   }
@@ -176,7 +202,9 @@ onMounted(async () => {
       } else if (typeof parsed === 'boolean') {
         showModules.value = parsed ? ['stock', 'gold', 'fund'] : []
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   } else {
     // fallback to old key
     const fundSaved = localStorage.getItem('show_fund')
@@ -198,7 +226,9 @@ onMounted(async () => {
       if (pending.version && isNewerVersion(pending.version, version)) {
         hasPendingUpdate.value = true
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   window.addEventListener('keydown', handleKeyDown)
@@ -224,58 +254,113 @@ onUnmounted(() => {
   <div ref="containerRef" class="setting-container">
     <DragHandle>
       <template #left>
-        <button class="nav-btn" @click="goBack" :title="t('goBack')">
-          ⬅️
-        </button>
+        <button class="nav-btn" :title="t('goBack')" @click="goBack">⬅️</button>
       </template>
       <template #right>
-        <button class="nav-btn" @click="goToAbout" :title="t('about')">
-          ℹ️
-        </button>
+        <button class="nav-btn" :title="t('about')" @click="goToAbout">ℹ️</button>
       </template>
     </DragHandle>
     <div class="setting-content">
       <div class="setting-item">
         <span class="label">{{ t('language') }}</span>
         <div class="lang-select">
-          <span class="lang-option" :class="{ active: locale === 'default' }" @click="changeLanguage('default')">{{ t('default') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: locale === 'default' }"
+            @click="changeLanguage('default')"
+            >{{ t('default') }}</span
+          >
           <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: locale === 'en' }" @click="changeLanguage('en')">{{ t('english') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: locale === 'en' }"
+            @click="changeLanguage('en')"
+            >{{ t('english') }}</span
+          >
           <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: locale === 'zh' }" @click="changeLanguage('zh')">{{ t('chinese') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: locale === 'zh' }"
+            @click="changeLanguage('zh')"
+            >{{ t('chinese') }}</span
+          >
         </div>
       </div>
       <div class="setting-item">
         <span class="label">{{ t('alwaysOnTop') }}</span>
         <div class="lang-select">
-          <span class="lang-option" :class="{ active: ballAlwaysOnTop }" @click="toggleBallAlwaysOnTop">{{ t('topBall') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: ballAlwaysOnTop }"
+            @click="toggleBallAlwaysOnTop"
+            >{{ t('topBall') }}</span
+          >
           <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: windowAlwaysOnTop }" @click="toggleWindowAlwaysOnTop">{{ t('topWindow') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: windowAlwaysOnTop }"
+            @click="toggleWindowAlwaysOnTop"
+            >{{ t('topWindow') }}</span
+          >
         </div>
       </div>
       <div class="setting-item">
         <span class="label">{{ t('ballDisplayMode') }}</span>
         <div class="lang-select">
-          <span class="lang-option" :class="{ active: ballDisplayMode === 'stock' }" @click="changeBallDisplayMode('stock')">{{ t('ballModeStock') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: ballDisplayMode === 'stock' }"
+            @click="changeBallDisplayMode('stock')"
+            >{{ t('ballModeStock') }}</span
+          >
           <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: ballDisplayMode === 'gold' }" @click="changeBallDisplayMode('gold')">{{ t('ballModeGold') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: ballDisplayMode === 'gold' }"
+            @click="changeBallDisplayMode('gold')"
+            >{{ t('ballModeGold') }}</span
+          >
           <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: ballDisplayMode === 'none' }" @click="changeBallDisplayMode('none')">{{ t('ballModeNone') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: ballDisplayMode === 'none' }"
+            @click="changeBallDisplayMode('none')"
+            >{{ t('ballModeNone') }}</span
+          >
         </div>
       </div>
       <div class="setting-item">
         <span class="label">{{ t('showModules') }}</span>
         <div class="lang-select">
-          <span class="lang-option" :class="{ active: showModules.includes('stock') }" @click="toggleModule('stock')">{{ t('moduleStock') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: showModules.includes('stock') }"
+            @click="toggleModule('stock')"
+            >{{ t('moduleStock') }}</span
+          >
           <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: showModules.includes('gold') }" @click="toggleModule('gold')">{{ t('moduleGold') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: showModules.includes('gold') }"
+            @click="toggleModule('gold')"
+            >{{ t('moduleGold') }}</span
+          >
           <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: showModules.includes('fund') }" @click="toggleModule('fund')">{{ t('moduleFund') }}</span>
+          <span
+            class="lang-option"
+            :class="{ active: showModules.includes('fund') }"
+            @click="toggleModule('fund')"
+            >{{ t('moduleFund') }}</span
+          >
         </div>
       </div>
       <div class="setting-item hotkey-item">
         <span class="label">{{ t('hotkeyLabel') }}</span>
-        <div class="hotkey-display" :class="{ recording: isRecording, empty: !globalHotkey && !isRecording }" @click="startRecording">
+        <div
+          class="hotkey-display"
+          :class="{ recording: isRecording, empty: !globalHotkey && !isRecording }"
+          @click="startRecording"
+        >
           <span v-if="isRecording">{{ t('pressKeys') }}</span>
           <span v-else-if="globalHotkey">{{ globalHotkey }}</span>
           <span v-else class="placeholder">{{ t('clickToSet') }}</span>
@@ -444,7 +529,14 @@ onUnmounted(() => {
 }
 
 @keyframes dotPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.3); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.3);
+  }
 }
 </style>

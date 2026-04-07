@@ -27,6 +27,7 @@
 - 默认隐藏，可在设置"模块显示"中自定义选择开启
 
 ### 🟨 金银行情
+
 - **实时监控**：实时获取伦敦金 (XAU/USD)、伦敦银 (XAG/USD) 价格。
 - **货币切换**: 可自由切换货币 CNY/USD，自动按实时汇率换算为克价（¥/g）或美元/盎司（$/oz）。
 - **黄金持仓**：只支持黄金持仓，查看**当日盈亏**、**持仓成本**、**持仓市值**、**持仓手数**等信息。
@@ -51,42 +52,48 @@
 ## 📸 产品截图
 
 ### 🪟 窗口大小对比
+
 ![大小](./docs/screenshots/window-1.png)
 
 ### 🫧 悬浮球例图
+
 ![悬浮球](./docs/screenshots/ball-1.png)
 ![悬浮球](./docs/screenshots/ball-2.png)
 
 ### 📊 股票例图
+
 ![A股](./docs/screenshots/stock-1.png)
 ![A股](./docs/screenshots/stock-2.png)
 ![A股](./docs/screenshots/stock-3.png)
 ![A股](./docs/screenshots/stock-4.png)
 
 ### 💹 基金例图
+
 ![基金](./docs/screenshots/fund-1.png)
 ![基金](./docs/screenshots/fund-2.png)
 
 ### 🟨 黄金例图
+
 ![黄金](./docs/screenshots/gold-1.png)
 
 ### ⚙️ 设置例图
+
 ![设置](./docs/screenshots/setting-1.png)
 
 ---
 
 ## 🛠️ 技术栈
 
-| 分类 | 技术                                                                        |
-| ---- | --------------------------------------------------------------------------- |
-| 框架 | [Electron](https://www.electronjs.org/) 39 + [Vue 3](https://vuejs.org/)    |
-| 语言 | [TypeScript](https://www.typescriptlang.org/)                               |
-| 构建 | [electron-vite](https://electron-vite.org/) + [Vite](https://vitejs.dev/) 7 |
-| 路由 | [Vue Router](https://router.vuejs.org/) 4                                   |
+| 分类   | 技术                                                                        |
+| ------ | --------------------------------------------------------------------------- |
+| 框架   | [Electron](https://www.electronjs.org/) 39 + [Vue 3](https://vuejs.org/)    |
+| 语言   | [TypeScript](https://www.typescriptlang.org/)                               |
+| 构建   | [electron-vite](https://electron-vite.org/) + [Vite](https://vitejs.dev/) 7 |
+| 路由   | [Vue Router](https://router.vuejs.org/) 4                                   |
 | 国际化 | [vue-i18n](https://vue-i18n.intlify.dev/) 11                                |
-| 打包 | [electron-builder](https://www.electron.build/)                             |
-| 更新 | [electron-updater](https://www.electron.build/auto-update)                  |
-| 规范 | ESLint + Prettier                                                           |
+| 打包   | [electron-builder](https://www.electron.build/)                             |
+| 更新   | [electron-updater](https://www.electron.build/auto-update)                  |
+| 规范   | ESLint + Prettier                                                           |
 
 ---
 

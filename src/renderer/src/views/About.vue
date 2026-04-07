@@ -66,25 +66,25 @@ const installUpdate = () => {
   window.electron.ipcRenderer.send('quit-and-install')
 }
 
-// 格式化 release notes
-// 格式化 release notes（简单的 Markdown 转 HTML）
-const formatReleaseNotes = (notes: string): string => {
-  if (!notes) return ''
+// 格式化 release notes（Markdown → 结构化数组）
+interface ReleaseNoteLine {
+  type: 'h2' | 'h3' | 'h4' | 'li' | 'p'
+  text: string
+}
+
+const parseReleaseNotes = (notes: string): ReleaseNoteLine[] => {
+  if (!notes) return []
   return notes
     .split('\n')
-    .map(line => {
-      // 标题
-      if (line.startsWith('### ')) return `<h4>${line.slice(4)}</h4>`
-      if (line.startsWith('## ')) return `<h3>${line.slice(3)}</h3>`
-      if (line.startsWith('# ')) return `<h2>${line.slice(2)}</h2>`
-      // 列表项
-      if (line.startsWith('- ') || line.startsWith('* ')) return `<li>${line.slice(2)}</li>`
-      // 空行
-      if (!line.trim()) return '<br>'
-      // 普通段落
-      return `<p>${line}</p>`
+    .filter((line) => line.trim())
+    .map((line) => {
+      if (line.startsWith('### ')) return { type: 'h4' as const, text: line.slice(4) }
+      if (line.startsWith('## ')) return { type: 'h3' as const, text: line.slice(3) }
+      if (line.startsWith('# ')) return { type: 'h2' as const, text: line.slice(2) }
+      if (line.startsWith('- ') || line.startsWith('* '))
+        return { type: 'li' as const, text: line.slice(2) }
+      return { type: 'p' as const, text: line }
     })
-    .join('')
 }
 
 // 通用窗口尺寸同步：测量容器实际尺寸并通知主进程
@@ -125,7 +125,7 @@ onMounted(async () => {
         localStorage.removeItem('pending_update')
         hasPendingUpdate.value = false
       }
-    } catch { 
+    } catch {
       localStorage.removeItem('pending_update')
     }
   }
@@ -216,9 +216,7 @@ onUnmounted(() => {
   <div ref="containerRef" class="about-container">
     <DragHandle>
       <template #left>
-        <button class="nav-btn" @click="backToSetting" :title="t('goBack')">
-          ⬅️
-        </button>
+        <button class="nav-btn" :title="t('goBack')" @click="backToSetting">⬅️</button>
       </template>
     </DragHandle>
     <div class="main">
@@ -226,8 +224,8 @@ onUnmounted(() => {
         alt="logo"
         class="logo"
         src="../assets/electron.svg"
-        @click="backToBall"
         :title="t('clickToShrink')"
+        @click="backToBall"
       />
       <div class="text">
         <span class="vue">{{ t('investment') }}</span>
@@ -240,21 +238,24 @@ onUnmounted(() => {
       <span
         class="app-version"
         :class="{ 'has-update': hasPendingUpdate }"
-        @click="onVersionClick"
         :title="t('checkUpdates')"
+        @click="onVersionClick"
       >
         v{{ version }}
         <span class="update-icon">↻</span>
         <span v-if="hasPendingUpdate" class="update-dot"></span>
       </span>
-      <div v-if="updateMessage || updateStatus === 'downloading' || updateStatus === 'ready'" class="update-section">
-        <span class="update-msg" v-if="updateMessage">{{ updateMessage }}</span>
-        <span v-if="versionInfo && (updateStatus === 'downloading' || updateStatus === 'ready')" class="version-badge">v{{ versionInfo }}</span>
-        <button
-          v-if="updateStatus === 'ready'"
-          class="install-btn"
-          @click="installUpdate"
+      <div
+        v-if="updateMessage || updateStatus === 'downloading' || updateStatus === 'ready'"
+        class="update-section"
+      >
+        <span v-if="updateMessage" class="update-msg">{{ updateMessage }}</span>
+        <span
+          v-if="versionInfo && (updateStatus === 'downloading' || updateStatus === 'ready')"
+          class="version-badge"
+          >v{{ versionInfo }}</span
         >
+        <button v-if="updateStatus === 'ready'" class="install-btn" @click="installUpdate">
           {{ t('install') }}
         </button>
       </div>
@@ -265,9 +266,17 @@ onUnmounted(() => {
           <div class="release-notes-header">
             <span class="dismiss-btn" @click="dismissUpdate">✕</span>
             <span>{{ t('whatsNew') }} {{ versionInfo ? 'v' + versionInfo : '' }}</span>
-            <span class="confirm-btn" @click="confirmDownload" :title="t('confirmUpdate')">✅</span>
+            <span class="confirm-btn" :title="t('confirmUpdate')" @click="confirmDownload">✅</span>
           </div>
-          <div v-if="releaseNotes" class="release-notes-content" v-html="formatReleaseNotes(releaseNotes)"></div>
+          <div v-if="releaseNotes" class="release-notes-content">
+            <template v-for="(line, i) in parseReleaseNotes(releaseNotes)" :key="i">
+              <component :is="'h' + line.type.slice(1)" v-if="line.type.startsWith('h')">
+                {{ line.text }}
+              </component>
+              <li v-else-if="line.type === 'li'">{{ line.text }}</li>
+              <p v-else>{{ line.text }}</p>
+            </template>
+          </div>
           <div v-else class="release-notes-content">
             <p class="no-notes">{{ t('newVersionFoundGeneric') }}</p>
           </div>
@@ -343,8 +352,12 @@ onUnmounted(() => {
 }
 
 @keyframes logo-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .text {
@@ -401,8 +414,15 @@ onUnmounted(() => {
 }
 
 @keyframes dotPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.3); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.3);
+  }
 }
 
 .update-icon {
@@ -531,16 +551,22 @@ onUnmounted(() => {
   border-radius: 2px;
 }
 
-.release-notes-content h2,
-.release-notes-content h3,
-.release-notes-content h4 {
+.release-notes-content :deep(h2),
+.release-notes-content :deep(h3),
+.release-notes-content :deep(h4) {
   margin: 6px 0 3px;
   color: #2ecc71;
 }
 
-.release-notes-content h2 { font-size: 14px; }
-.release-notes-content h3 { font-size: 13px; }
-.release-notes-content h4 { font-size: 12px; }
+.release-notes-content h2 {
+  font-size: 14px;
+}
+.release-notes-content h3 {
+  font-size: 13px;
+}
+.release-notes-content h4 {
+  font-size: 12px;
+}
 
 .release-notes-content p {
   margin: 3px 0;
@@ -557,7 +583,13 @@ onUnmounted(() => {
 }
 
 @keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

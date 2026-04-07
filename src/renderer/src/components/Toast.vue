@@ -103,7 +103,10 @@ const queueInfo = computed(() =>
         :class="['toast-container', typeClass, { 'toast-interactive': toastType === 'alert' }]"
         @click="handleClick"
       >
-        <span class="toast-message"><span class="toast-icon">{{ icon }}</span>{{ msg }}</span>
+        <span class="toast-message"
+          ><span class="toast-icon">{{ icon }}</span
+          >{{ msg }}</span
+        >
         <span v-if="toastType === 'alert'" class="toast-queue">{{ queueInfo }}</span>
         <span v-if="toastType === 'alert'" class="toast-close">✕</span>
       </div>
@@ -145,7 +148,9 @@ const queueInfo = computed(() =>
 .toast-interactive {
   pointer-events: auto;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .toast-interactive:hover {

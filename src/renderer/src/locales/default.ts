@@ -42,7 +42,7 @@ export default {
   readyToInstall: 'Ready to install',
   install: 'Install',
   viewReleaseNotes: '查看更新内容 View Release Notes',
-  whatsNew: '更新内容 What\'s New',
+  whatsNew: "更新内容 What's New",
 
   // MainList.vue
   name: '股票名称 Stock Name',
@@ -175,5 +175,5 @@ export default {
   clickToEdit: '点击编辑持仓',
   holdingDays: '持有天数 Days',
   yieldRate: '收益率 Yield',
-  fundBuyDate: '买入日期',
+  fundBuyDate: '买入日期'
 }

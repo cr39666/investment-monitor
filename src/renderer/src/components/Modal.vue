@@ -43,7 +43,13 @@ const open = (
   type: 'transaction' | 'add' | 'alert',
   title: string,
   message: string,
-  defaults: { price?: number; amount?: number; direction?: 'up' | 'down'; isUp?: boolean; currentAmount?: number } = {}
+  defaults: {
+    price?: number
+    amount?: number
+    direction?: 'up' | 'down'
+    isUp?: boolean
+    currentAmount?: number
+  } = {}
 ) => {
   modalType.value = type
   modalTitle.value = title
@@ -75,7 +81,9 @@ const open = (
 const showHint = (msg: string) => {
   shakeHint.value = msg
   if (shakeTimer) clearTimeout(shakeTimer)
-  shakeTimer = setTimeout(() => { shakeHint.value = '' }, 1500)
+  shakeTimer = setTimeout(() => {
+    shakeHint.value = ''
+  }, 1500)
 }
 
 const handleConfirm = () => {
@@ -101,9 +109,12 @@ const handleConfirm = () => {
     return
   }
   // 调仓模式：根据买入/卖出方向自动添加正负号
-  const finalAmount = modalType.value === 'transaction'
-    ? (tradeDirection.value === 'buy' ? Math.abs(amount.value) : -Math.abs(amount.value))
-    : amount.value
+  const finalAmount =
+    modalType.value === 'transaction'
+      ? tradeDirection.value === 'buy'
+        ? Math.abs(amount.value)
+        : -Math.abs(amount.value)
+      : amount.value
   resolvePromise?.({
     confirmed: true,
     price: tradePrice.value,
@@ -145,15 +156,17 @@ defineExpose({ open })
             <template v-if="modalType === 'alert'">
               <div class="modal-input-group">
                 <input
-                  type="number"
+                  ref="priceInput"
                   v-model.number="tradePrice"
+                  type="number"
                   class="modal-input"
                   step="0.01"
-                  ref="priceInput"
                   @keyup.enter="handleConfirm"
                 />
                 <label>{{ t('targetPrice') }}</label>
-                <button class="clear-icon-btn" @click="handleClear" :title="t('clearAlert')">🗑️</button>
+                <button class="clear-icon-btn" :title="t('clearAlert')" @click="handleClear">
+                  🗑️
+                </button>
               </div>
               <div class="alert-direction-group">
                 <button
@@ -176,7 +189,9 @@ defineExpose({ open })
             <!-- 添加/交易模式 -->
             <template v-else>
               <!-- 添加模式：显示股票名称 -->
-              <div v-if="modalType === 'add' && modalMessage" class="modal-stock-name">{{ modalMessage }}</div>
+              <div v-if="modalType === 'add' && modalMessage" class="modal-stock-name">
+                {{ modalMessage }}
+              </div>
               <!-- 调仓模式：先选方向 -->
               <div v-if="modalType === 'transaction'" class="trade-direction-group">
                 <button
@@ -198,36 +213,41 @@ defineExpose({ open })
                   class="clear-position-btn"
                   :class="{ active: tradeDirection === 'clear' }"
                   @click="tradeDirection = 'clear'"
-                >🧹 {{ t('clearPosition') }}</button>
+                >
+                  🧹 {{ t('clearPosition') }}
+                </button>
               </div>
               <!-- 选完方向后显示价格输入 -->
               <div class="modal-input-group">
                 <input
-                  type="number"
+                  ref="priceInput"
                   v-model.number="tradePrice"
+                  type="number"
                   class="modal-input"
                   step="0.001"
-                  ref="priceInput"
                   @keyup.enter="handleConfirm"
                 />
                 <label>{{ modalType === 'add' ? t('initialCost') : t('tradePrice') }}</label>
               </div>
               <!-- 添加模式或有持仓时显示手数输入（清仓不需要） -->
-              <div v-if="modalType === 'add' || tradeDirection !== 'clear'" class="modal-input-group">
+              <div
+                v-if="modalType === 'add' || tradeDirection !== 'clear'"
+                class="modal-input-group"
+              >
                 <input
-                  type="number"
-                  v-model.number="amount"
-                  class="modal-input"
                   ref="qtyInput"
-                  @keyup.enter="handleConfirm"
+                  v-model.number="amount"
+                  type="number"
+                  class="modal-input"
                   :min="0"
+                  @keyup.enter="handleConfirm"
                 />
                 <label>{{ modalType === 'add' ? t('lotsHint') : t('deltaLots') }}</label>
               </div>
               <!-- 当日新建仓选项 -->
               <div v-if="modalType === 'add'" class="modal-checkbox-group">
                 <label class="checkbox-label">
-                  <input type="checkbox" v-model="isTodayNewPosition" class="checkbox-input" />
+                  <input v-model="isTodayNewPosition" type="checkbox" class="checkbox-input" />
                   <span class="checkbox-custom"></span>
                   <span class="checkbox-text">{{ t('isTodayNewPosition') }}</span>
                 </label>
@@ -240,12 +260,18 @@ defineExpose({ open })
             <p v-if="modalMessage && modalType !== 'add'" class="modal-msg">
               <template v-if="modalType === 'alert' && parsedMessage.currentPrice !== null">
                 {{ parsedMessage.stockName }} ({{ parsedMessage.currentPriceText }}:
-                <span :class="['current-price', isPriceUp === true ? 'price-up' : isPriceUp === false ? 'price-down' : '']">
-                  {{ parsedMessage.currentPrice.toFixed(2) }}
-                </span>)
+                <span
+                  :class="[
+                    'current-price',
+                    isPriceUp === true ? 'price-up' : isPriceUp === false ? 'price-down' : ''
+                  ]"
+                >
+                  {{ parsedMessage.currentPrice.toFixed(2) }} </span
+                >)
               </template>
               <template v-else-if="modalType === 'transaction'">
-                {{ modalMessage }}--{{ t('currentLots') }} <span class="current-amount">{{ currentAmount }}</span> {{ t('lotsUnit') }}
+                {{ modalMessage }}--{{ t('currentLots') }}
+                <span class="current-amount">{{ currentAmount }}</span> {{ t('lotsUnit') }}
               </template>
               <template v-else>{{ modalMessage }}</template>
             </p>
@@ -347,11 +373,22 @@ defineExpose({ open })
 }
 
 @keyframes hint-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-4px); }
-  40% { transform: translateX(4px); }
-  60% { transform: translateX(-3px); }
-  80% { transform: translateX(3px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
 }
 
 .hint-fade-enter-active,

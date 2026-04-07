@@ -95,7 +95,7 @@ const toggleRowSelection = (code: string) => {
 const shownCodes = ref<string[]>([])
 const toggleNameDisplay = (code: string) => {
   if (shownCodes.value.includes(code)) {
-    shownCodes.value = shownCodes.value.filter(c => c !== code)
+    shownCodes.value = shownCodes.value.filter((c) => c !== code)
   } else {
     shownCodes.value.push(code)
   }
@@ -408,7 +408,9 @@ onMounted(async () => {
       } else if (typeof parsed === 'boolean') {
         visibleModules.value = parsed ? ['stock', 'gold', 'fund'] : []
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   } else {
     const fundSaved = localStorage.getItem('show_fund')
     if (fundSaved !== null) {
@@ -443,12 +445,12 @@ onUnmounted(() => {
   <div ref="containerRef" class="fund-container">
     <DragHandle>
       <template #left>
-        <button class="nav-btn" @click="goBack" :title="t('backToBall')">
+        <button class="nav-btn" :title="t('backToBall')" @click="goBack">
           <img src="../assets/electron.svg" class="nav-icon" alt="ball" />
         </button>
       </template>
       <template #right>
-        <button class="nav-btn" @click="goToSetting" :title="t('goToSetting')">⚙️</button>
+        <button class="nav-btn" :title="t('goToSetting')" @click="goToSetting">⚙️</button>
       </template>
     </DragHandle>
 
@@ -456,31 +458,31 @@ onUnmounted(() => {
       <table class="fund-table">
         <thead>
           <tr>
-            <th :title="t('name')" @click="toggleSort('name')" class="clickable-th">
+            <th :title="t('name')" class="clickable-th" @click="toggleSort('name')">
               Name
               <span class="sort-icon">{{
                 sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
               }}</span>
             </th>
-            <th :title="t('fundNav')" @click="toggleSort('nav')" class="clickable-th">
+            <th :title="t('fundNav')" class="clickable-th" @click="toggleSort('nav')">
               NAV
               <span class="sort-icon">{{
                 sortColumn === 'nav' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
               }}</span>
             </th>
-            <th :title="t('totalPnl')" @click="toggleSort('pnl')" class="clickable-th">
+            <th :title="t('totalPnl')" class="clickable-th" @click="toggleSort('pnl')">
               PnL
               <span class="sort-icon">{{
                 sortColumn === 'pnl' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
               }}</span>
             </th>
-            <th :title="t('change')" @click="toggleSort('chg')" class="clickable-th">
+            <th :title="t('change')" class="clickable-th" @click="toggleSort('chg')">
               Chg%
               <span class="sort-icon">{{
                 sortColumn === 'chg' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
               }}</span>
             </th>
-            <th :title="t('yieldRate')" @click="toggleSort('yield')" class="clickable-th">
+            <th :title="t('yieldRate')" class="clickable-th" @click="toggleSort('yield')">
               Yield
               <span class="sort-icon">{{
                 sortColumn === 'yield' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
@@ -488,8 +490,8 @@ onUnmounted(() => {
             </th>
             <th
               :title="lastColMode === 0 ? t('holdingDays') : t('marketValue')"
-              @click="toggleLastColMode"
               class="clickable-th"
+              @click="toggleLastColMode"
             >
               {{ lastColMode === 0 ? 'Days' : 'Val' }} <span class="toggle-icon">🔁</span>
             </th>
@@ -502,10 +504,16 @@ onUnmounted(() => {
             :class="{ 'row-selected': selectedCodes.includes(fund.code) }"
             @click="toggleRowSelection(fund.code)"
           >
-            <td :class="['name-cell', (quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green']" :title="quotes[fund.code]?.name || fund.code" @click.stop="toggleNameDisplay(fund.code)">
+            <td
+              :class="['name-cell', (quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green']"
+              :title="quotes[fund.code]?.name || fund.code"
+              @click.stop="toggleNameDisplay(fund.code)"
+            >
               <template v-if="!isCensored">
                 <div class="clickable-tag">
-                  <span v-if="!shownCodes.includes(fund.code)">{{ formatName(quotes[fund.code]?.name) }}</span>
+                  <span v-if="!shownCodes.includes(fund.code)">{{
+                    formatName(quotes[fund.code]?.name)
+                  }}</span>
                   <span v-else>{{ fund.code }}</span>
                 </div>
               </template>
@@ -519,8 +527,8 @@ onUnmounted(() => {
             </td>
             <td
               :class="[(calculatePnl(fund) || 0) >= 0 ? 'red' : 'green', 'clickable-cell']"
-              @click.stop="editFund(fund)"
               :title="t('clickToEdit')"
+              @click.stop="editFund(fund)"
             >
               <div v-if="!isCensored" class="clickable-tag">
                 {{ calculatePnl(fund) !== null ? calculatePnl(fund)!.toFixed(1) : '--' }}
@@ -568,19 +576,29 @@ onUnmounted(() => {
 
     <div class="summary-section">
       <div class="bottom-actions">
-        <button v-if="visibleModules.includes('stock')" class="mode-btn stock-btn" @click="goToStock" :title="t('switchToStock')">
+        <button
+          v-if="visibleModules.includes('stock')"
+          class="mode-btn stock-btn"
+          :title="t('switchToStock')"
+          @click="goToStock"
+        >
           <span class="mode-icon">📈</span>
         </button>
-        <button v-if="visibleModules.includes('gold')" class="mode-btn gold-btn" @click="goToGold" :title="t('switchToGold')">
+        <button
+          v-if="visibleModules.includes('gold')"
+          class="mode-btn gold-btn"
+          :title="t('switchToGold')"
+          @click="goToGold"
+        >
           <span class="mode-icon">🟨</span>
         </button>
         <div class="input-group">
           <input
+            ref="fundInputRef"
             v-model="inputCode"
             :placeholder="t('fundCode')"
-            @keyup.enter="addFund"
             class="fund-input"
-            ref="fundInputRef"
+            @keyup.enter="addFund"
           />
           <button class="add-btn" @click="addFund"><span class="add-icon">➕</span></button>
         </div>
@@ -588,22 +606,22 @@ onUnmounted(() => {
       <div class="summary-pnl">
         <span
           :class="['visible-summary', totalPnl > 0 ? 'red' : totalPnl < 0 ? 'green' : 'gray']"
-          @click.stop="copyTotalPnl"
           :title="t('totalPnl')"
+          @click.stop="copyTotalPnl"
         >
           <span class="pnl-label">T.PnL:</span>
           <span v-if="!isCensored">{{ totalPnl > 0 ? '+' : '' }}{{ totalPnl.toFixed(1) }}</span>
           <span v-else>❇❇</span>
         </span>
-        <span class="lock-icon" @click="toggleCensor" :title="t('toggleHide')">{{
+        <span class="lock-icon" :title="t('toggleHide')" @click="toggleCensor">{{
           isCensored ? '🔒' : '🔓'
         }}</span>
       </div>
       <button
         v-if="funds.length > 0"
         class="clear-all-btn"
-        @click="handleDeleteAction"
         :title="selectedCodes.length > 0 ? t('deleteSelected') : t('clearAll')"
+        @click="handleDeleteAction"
       >
         <span class="clear-all-icon">{{ selectedCodes.length > 0 ? '🗑️' : '🧹' }}</span>
       </button>
@@ -892,7 +910,10 @@ onUnmounted(() => {
   font-size: 12px;
   opacity: 0.8;
   display: inline-block;
-  transition: opacity 0.25s, transform 0.25s, text-shadow 0.25s;
+  transition:
+    opacity 0.25s,
+    transform 0.25s,
+    text-shadow 0.25s;
 }
 
 .add-btn:hover .add-icon {

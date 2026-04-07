@@ -70,7 +70,10 @@ const fetchAndRefreshPnl = () => {
   }
   const stocks: StockItem[] = JSON.parse(stocksRaw)
   hasStocks.value = stocks.length > 0
-  if (!hasStocks.value) { totalDailyPnl.value = 0; return }
+  if (!hasStocks.value) {
+    totalDailyPnl.value = 0
+    return
+  }
 
   // 检查缓存是否过期（非今天的缓存）
   const cachedDate = localStorage.getItem('cached_quotes_date')
@@ -129,7 +132,10 @@ const fetchAndRefreshPnl = () => {
 
 const calcPnlFromCache = (stocks: StockItem[]) => {
   const quotesRaw = localStorage.getItem('cached_quotes')
-  if (!quotesRaw) { totalDailyPnl.value = 0; return }
+  if (!quotesRaw) {
+    totalDailyPnl.value = 0
+    return
+  }
   calcPnl(stocks, JSON.parse(quotesRaw))
 }
 
@@ -160,7 +166,9 @@ const fetchGoldPrice = async () => {
     if (data?.price) {
       goldPrice.value = data.price / OZ_TO_GRAM
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 const pnlText = computed(() => {
@@ -210,7 +218,7 @@ const onMouseMove = (moveEvent: MouseEvent) => {
   }
 }
 
-const stopDragging = () => {
+const stopDragging = (): void => {
   if (rafId !== null) {
     cancelAnimationFrame(rafId)
     // 确保最终位置被提交
@@ -233,11 +241,11 @@ const onMouseDown = (e: MouseEvent) => {
 onMounted(() => {
   // 初始收缩为 80x80
   window.electron.ipcRenderer.send('resize-window', 80, 80)
-  
+
   // 初始化显示模式并启动相应的定时器
   fetchAndRefreshPnl()
   pnlTimer = setInterval(fetchAndRefreshPnl, 1000)
-  
+
   // 如果初始模式是金价，启动金价定时器
   if (ballDisplayMode.value === 'gold') {
     fetchGoldPrice()
@@ -248,7 +256,7 @@ onMounted(() => {
   window.electron.ipcRenderer.on('set-ball-display-mode', (_event, mode: string) => {
     ballDisplayMode.value = mode
     localStorage.setItem('ball_display_mode', mode)
-    
+
     // 切换到金价模式时，立即刷新一次并启动独立定时器
     if (mode === 'gold') {
       fetchGoldPrice()
@@ -261,7 +269,7 @@ onMounted(() => {
         goldTimer = null
       }
     }
-    
+
     fetchAndRefreshPnl()
   })
 
@@ -303,15 +311,20 @@ const onContextMenu = (e: MouseEvent) => {
   <div
     ref="containerRef"
     :class="['floating-ball-container', { 'is-hovered': isHoverActive }]"
+    :title="t('dragToMove')"
     @mousedown="onMouseDown"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
     @click="goToDetail"
     @contextmenu="onContextMenu"
-    :title="t('dragToMove')"
   >
     <img src="../assets/electron.svg" class="ball-icon" alt="logo" />
-    <span v-if="ballDisplayMode !== 'none' && (ballDisplayMode === 'gold' || hasStocks)" class="pnl-text" :class="pnlColorClass">{{ pnlText }}</span>
+    <span
+      v-if="ballDisplayMode !== 'none' && (ballDisplayMode === 'gold' || hasStocks)"
+      class="pnl-text"
+      :class="pnlColorClass"
+      >{{ pnlText }}</span
+    >
   </div>
 </template>
 
@@ -362,7 +375,9 @@ const onContextMenu = (e: MouseEvent) => {
   letter-spacing: -0.5px;
   white-space: nowrap;
   pointer-events: none;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.85), 0 0 8px rgba(0, 0, 0, 0.6);
+  text-shadow:
+    0 0 4px rgba(0, 0, 0, 0.85),
+    0 0 8px rgba(0, 0, 0, 0.6);
   z-index: 1;
   transition: opacity 0.35s ease;
 }

@@ -50,12 +50,12 @@ const stockInputRef = ref<HTMLInputElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 // 前往黄金页面
-const goToGold = () => {
+const goToGold = (): void => {
   router.push('/gold')
 }
 
 // 前往基金页面
-const goToFund = () => {
+const goToFund = (): void => {
   router.push('/fund')
 }
 
@@ -64,7 +64,7 @@ const visibleModules = ref<string[]>(['stock', 'gold', 'fund'])
 
 // Qty 列的展示模式：0=持仓手数, 1=价格提醒
 const qtyDisplayMode = ref(0)
-const toggleQtyDisplayMode = () => {
+const toggleQtyDisplayMode = (): void => {
   qtyDisplayMode.value = (qtyDisplayMode.value + 1) % 2
 }
 
@@ -165,7 +165,7 @@ const toggleCensor = () => {
 const shownCodes = ref<string[]>([])
 const toggleNameDisplay = (code: string) => {
   if (shownCodes.value.includes(code)) {
-    shownCodes.value = shownCodes.value.filter(c => c !== code)
+    shownCodes.value = shownCodes.value.filter((c) => c !== code)
   } else {
     shownCodes.value.push(code)
   }
@@ -334,7 +334,7 @@ const addStock = async () => {
 }
 
 // 单独获取行情（辅助addStock）
-const fetchQuotesByCode = (code: string) => {
+const fetchQuotesByCode = (code: string): Promise<void> => {
   return new Promise<void>((resolve) => {
     const scriptId = 'temp-jsonp-script'
     let script = document.getElementById(scriptId) as HTMLScriptElement
@@ -345,7 +345,7 @@ const fetchQuotesByCode = (code: string) => {
     script.src = `http://qt.gtimg.cn/q=${code}&t=${Date.now()}`
     script.onload = () => {
       const varName = `v_${code}`
-      const dataStr = (window as any)[varName]
+      const dataStr = (window as Record<string, unknown>)[varName] as string | undefined
       if (dataStr) {
         const parts = dataStr.split('~')
         if (parts.length > 5) {
@@ -457,7 +457,8 @@ const adjustStockFlow = async (stock: StockItem) => {
 
       // 当日盈亏修正：加仓部分的当日盈亏应从买入价算起，而非昨收
       if (yesterdayClose > 0) {
-        stock.dailyRealizedPnl = (stock.dailyRealizedPnl || 0) - (tradePrice - yesterdayClose) * delta * 100
+        stock.dailyRealizedPnl =
+          (stock.dailyRealizedPnl || 0) - (tradePrice - yesterdayClose) * delta * 100
       }
     } else {
       // 减仓：将卖出部分的盈亏计入已实现盈亏（永久）
@@ -467,7 +468,8 @@ const adjustStockFlow = async (stock: StockItem) => {
 
       // 当日盈亏修正
       if (yesterdayClose > 0) {
-        stock.dailyRealizedPnl = (stock.dailyRealizedPnl || 0) + (tradePrice - yesterdayClose) * soldLots * 100
+        stock.dailyRealizedPnl =
+          (stock.dailyRealizedPnl || 0) + (tradePrice - yesterdayClose) * soldLots * 100
       }
     }
 
@@ -743,7 +745,9 @@ onMounted(async () => {
       } else if (typeof parsed === 'boolean') {
         visibleModules.value = parsed ? ['stock', 'gold', 'fund'] : []
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   } else {
     const fundSaved = localStorage.getItem('show_fund')
     if (fundSaved !== null) {
@@ -780,7 +784,7 @@ const goBack = () => {
   router.push('/ball')
 }
 
-const goToSetting = () => {
+const goToSetting = (): void => {
   router.push('/setting')
 }
 
@@ -794,39 +798,37 @@ onUnmounted(() => {
   <div ref="containerRef" class="main-list-container">
     <DragHandle>
       <template #left>
-        <button class="nav-btn" @click="goBack" :title="t('backToBall')">
+        <button class="nav-btn" :title="t('backToBall')" @click="goBack">
           <img src="../assets/electron.svg" class="nav-icon" alt="ball" />
         </button>
       </template>
       <template #right>
-        <button class="nav-btn" @click="goToSetting" :title="t('goToSetting')">
-          ⚙️
-        </button>
+        <button class="nav-btn" :title="t('goToSetting')" @click="goToSetting">⚙️</button>
       </template>
     </DragHandle>
     <div class="table-container">
       <table class="stock-table">
         <thead>
           <tr>
-            <th :title="t('name')" @click="toggleSort('name')" class="clickable-th">
+            <th :title="t('name')" class="clickable-th" @click="toggleSort('name')">
               Name
               <span class="sort-icon">{{
                 sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
               }}</span>
             </th>
-            <th :title="t('currentPrice')" @click="toggleSort('curPrice')" class="clickable-th">
+            <th :title="t('currentPrice')" class="clickable-th" @click="toggleSort('curPrice')">
               Price
               <span class="sort-icon">{{
                 sortColumn === 'curPrice' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
               }}</span>
             </th>
-            <th :title="t('dailyPnl')" @click="toggleSort('dpnl')" class="clickable-th">
+            <th :title="t('dailyPnl')" class="clickable-th" @click="toggleSort('dpnl')">
               D.PnL
               <span class="sort-icon">{{
                 sortColumn === 'dpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
               }}</span>
             </th>
-            <th :title="t('totalPnl')" @click="toggleSort('tpnl')" class="clickable-th">
+            <th :title="t('totalPnl')" class="clickable-th" @click="toggleSort('tpnl')">
               T.PnL
               <span class="sort-icon">{{
                 sortColumn === 'tpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
@@ -834,18 +836,22 @@ onUnmounted(() => {
             </th>
             <th
               :title="avgDisplayMode === 0 ? t('avgBuyPrice') : t('marketValue')"
-              @click="toggleAvgDisplayMode"
               class="clickable-th"
+              @click="toggleAvgDisplayMode"
             >
               {{ avgDisplayMode === 0 ? 'Avg' : 'Val' }} <span class="toggle-icon">🔁</span>
             </th>
-            <th :title="t('change')" @click="toggleSort('change')" class="clickable-th">
+            <th :title="t('change')" class="clickable-th" @click="toggleSort('change')">
               Chg%
               <span class="sort-icon">{{
                 sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
               }}</span>
             </th>
-            <th :title="qtyDisplayMode === 0 ? t('amount') : t('priceAlert')" @click="toggleQtyDisplayMode" class="clickable-th">
+            <th
+              :title="qtyDisplayMode === 0 ? t('amount') : t('priceAlert')"
+              class="clickable-th"
+              @click="toggleQtyDisplayMode"
+            >
               {{ qtyDisplayMode === 0 ? 'Qty' : 'Alert' }} <span class="toggle-icon">🔁</span>
             </th>
           </tr>
@@ -857,10 +863,16 @@ onUnmounted(() => {
             :class="{ 'row-selected': selectedCodes.includes(stock.code) }"
             @click="toggleRowSelection(stock.code)"
           >
-            <td :class="['name-cell', (quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']" :title="quotes[stock.code]?.name || stock.code" @click.stop="toggleNameDisplay(stock.code)">
+            <td
+              :class="['name-cell', (quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
+              :title="quotes[stock.code]?.name || stock.code"
+              @click.stop="toggleNameDisplay(stock.code)"
+            >
               <template v-if="!isCensored">
                 <div class="clickable-tag">
-                  <span v-if="!shownCodes.includes(stock.code)">{{ formatName(quotes[stock.code]?.name) }}</span>
+                  <span v-if="!shownCodes.includes(stock.code)">{{
+                    formatName(quotes[stock.code]?.name)
+                  }}</span>
                   <span v-else>{{ stock.code }}</span>
                 </div>
               </template>
@@ -912,11 +924,15 @@ onUnmounted(() => {
               <span v-else>❇❇</span>
             </td>
             <td
-              @click.stop="qtyDisplayMode === 0 ? adjustStockFlow(stock) : setPriceAlert(stock)"
               class="clickable-cell"
               :title="qtyDisplayMode === 0 ? t('clickToAdjust') : t('setPriceAlert')"
+              @click.stop="qtyDisplayMode === 0 ? adjustStockFlow(stock) : setPriceAlert(stock)"
             >
-              <div v-if="!isCensored" class="clickable-tag" :class="{ 'alert-active': qtyDisplayMode === 1 && stock.priceAlerts?.length }">
+              <div
+                v-if="!isCensored"
+                class="clickable-tag"
+                :class="{ 'alert-active': qtyDisplayMode === 1 && stock.priceAlerts?.length }"
+              >
                 <template v-if="qtyDisplayMode === 0">
                   {{ stock.amount }}
                 </template>
@@ -939,19 +955,29 @@ onUnmounted(() => {
 
     <div class="summary-section">
       <div class="bottom-actions">
-        <button v-if="visibleModules.includes('fund')" class="mode-btn fund-btn" @click="goToFund" :title="t('switchToFund')">
+        <button
+          v-if="visibleModules.includes('fund')"
+          class="mode-btn fund-btn"
+          :title="t('switchToFund')"
+          @click="goToFund"
+        >
           <span class="mode-icon">💹</span>
         </button>
-        <button v-if="visibleModules.includes('gold')" class="mode-btn" @click="goToGold" :title="t('switchToGold')">
+        <button
+          v-if="visibleModules.includes('gold')"
+          class="mode-btn"
+          :title="t('switchToGold')"
+          @click="goToGold"
+        >
           <span class="mode-icon">🟨</span>
         </button>
         <div class="input-group">
           <input
+            ref="stockInputRef"
             v-model="inputCode"
             :placeholder="t('code')"
-            @keyup.enter="addStock"
             class="stock-input"
-            ref="stockInputRef"
+            @keyup.enter="addStock"
           />
           <button class="add-btn" @click="addStock"><span class="add-icon">➕</span></button>
         </div>
@@ -985,13 +1011,15 @@ onUnmounted(() => {
           >
           <span v-else>❇❇</span>
         </span>
-        <span class="lock-icon" @click="toggleCensor" :title="t('toggleHide')">{{ isCensored ? '🔒' : '🔓' }}</span>
+        <span class="lock-icon" :title="t('toggleHide')" @click="toggleCensor">{{
+          isCensored ? '🔒' : '🔓'
+        }}</span>
       </div>
       <button
         v-if="stocks.length > 0"
         class="clear-all-btn"
-        @click="handleDeleteAction"
         :title="selectedCodes.length > 0 ? t('deleteSelected') : t('clearAll')"
+        @click="handleDeleteAction"
       >
         <span class="clear-all-icon">{{ selectedCodes.length > 0 ? '🗑️' : '🧹' }}</span>
       </button>
@@ -1145,7 +1173,10 @@ onUnmounted(() => {
   font-size: 12px;
   opacity: 0.8;
   display: inline-block;
-  transition: opacity 0.25s, transform 0.25s, text-shadow 0.25s;
+  transition:
+    opacity 0.25s,
+    transform 0.25s,
+    text-shadow 0.25s;
 }
 
 .add-btn:hover .add-icon {

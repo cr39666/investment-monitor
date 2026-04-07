@@ -158,7 +158,6 @@ export default {
   collapseGoldHolding: '收起黄金持仓',
   clickToTogglePnL: '点击切换盈亏显示',
 
-
   // FundView.vue
 
   noFunds: '暂无基金',
@@ -177,5 +176,5 @@ export default {
   clickToEdit: '点击编辑持仓',
   holdingDays: '持有天数',
   yieldRate: '收益率',
-  fundBuyDate: '买入日期',
+  fundBuyDate: '买入日期'
 }
