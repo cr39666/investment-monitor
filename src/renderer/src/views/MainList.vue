@@ -196,7 +196,7 @@ const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 const formatName = (name: string | undefined): string => {
   if (!name) return '--'
   if (name.length > 4) {
-    return name.slice(0, 3) + '...'
+    return name.slice(0, 4) + '...'
   }
   return name
 }
