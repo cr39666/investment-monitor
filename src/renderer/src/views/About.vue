@@ -8,9 +8,8 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const router = useRouter()
 
-// @ts-ignore
-import pkg from '../../../../package.json'
-const version = pkg.version
+import { appVersion as version, isNewerVersion, useUpdateCheck } from '../composables/useUpdateCheck'
+const { hasPendingUpdate } = useUpdateCheck()
 
 const containerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
@@ -31,7 +30,6 @@ const downloadProgress = ref(0)
 const versionInfo = ref('')
 const releaseNotes = ref('')
 const showUpdateDialog = ref(false)
-const hasPendingUpdate = ref(false)
 
 // 点击版本号
 const onVersionClick = () => {
@@ -77,18 +75,6 @@ const syncWindowSize = () => {
   window.electron.ipcRenderer.send('resize-window', width, height)
 }
 
-const isNewerVersion = (newVer: string, oldVer: string): boolean => {
-  if (!newVer || !oldVer) return false
-  const v1Parts = newVer.split('.').map(Number)
-  const v2Parts = oldVer.split('.').map(Number)
-  for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
-    const v1 = v1Parts[i] || 0
-    const v2 = v2Parts[i] || 0
-    if (v1 > v2) return true
-    if (v1 < v2) return false
-  }
-  return false
-}
 
 onMounted(async () => {
   // 读取启动时检测到的更新信息

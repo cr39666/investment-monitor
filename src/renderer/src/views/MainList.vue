@@ -6,9 +6,11 @@ import DragHandle from '../components/DragHandle.vue'
 import Modal from '../components/Modal.vue'
 import Confirm from '../components/Confirm.vue'
 import Toast from '../components/Toast.vue'
+import { useUpdateCheck } from '../composables/useUpdateCheck'
 
 const { t } = useI18n()
 const router = useRouter()
+const { hasPendingUpdate, checkPendingUpdate } = useUpdateCheck()
 
 // 股票数据模型
 interface StockItem {
@@ -735,6 +737,9 @@ onMounted(async () => {
   loadStocks()
   resetDailyRealizedPnl() // 跨日清零当日已实现盈亏
 
+  // 检测更新状态
+  checkPendingUpdate()
+
   // 加载显示模块导航配置
   const moduleSaved = localStorage.getItem('show_modules')
   if (moduleSaved !== null) {
@@ -803,7 +808,9 @@ onUnmounted(() => {
         </button>
       </template>
       <template #right>
-        <button class="nav-btn" :title="t('goToSetting')" @click="goToSetting">⚙️</button>
+        <button class="nav-btn setting-btn" :title="t('goToSetting')" @click="goToSetting">
+          ⚙️<span v-if="hasPendingUpdate" class="update-dot"></span>
+        </button>
       </template>
     </DragHandle>
     <div class="table-container">
@@ -1074,6 +1081,33 @@ onUnmounted(() => {
 
 .nav-btn:active {
   transform: scale(1.05);
+}
+
+.setting-btn {
+  position: relative;
+}
+
+.update-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 4px;
+  height: 4px;
+  background-color: #2ecc71;
+  border-radius: 50%;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.3);
+  }
 }
 
 .nav-icon {

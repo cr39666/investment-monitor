@@ -153,10 +153,10 @@ function createWindow(): void {
       setTimeout(() => {
         // 初始检查
         autoUpdater.checkForUpdates()
-        // 之后每 4 小时静默检查一次新版本 (1000 * 60 * 60 * 4)
+        // 之后每 2 小时静默检查一次新版本 (1000 * 60 * 60 * 2)
         setInterval(() => {
           autoUpdater.checkForUpdates()
-        }, 14400000)
+        }, 7200000)
       }, 2000)
     }
   })

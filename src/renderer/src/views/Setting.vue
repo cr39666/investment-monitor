@@ -6,12 +6,11 @@ import DragHandle from '../components/DragHandle.vue'
 import Toast from '../components/Toast.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { getLastMainView } from '../router'
+import { appVersion as version, useUpdateCheck } from '../composables/useUpdateCheck'
 
 const { t, locale } = useI18n()
 const router = useRouter()
-// @ts-ignore
-import pkg from '../../../../package.json'
-const version = pkg.version
+const { hasPendingUpdate, checkPendingUpdate } = useUpdateCheck()
 
 const containerRef = ref<HTMLElement | null>(null)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -20,21 +19,6 @@ let resizeObserver: ResizeObserver | null = null
 const ballAlwaysOnTop = ref(true)
 const windowAlwaysOnTop = ref(false)
 const autoLaunch = ref(false)
-
-// 更新状态
-const hasPendingUpdate = ref(false)
-const isNewerVersion = (newVer: string, oldVer: string): boolean => {
-  if (!newVer || !oldVer) return false
-  const v1Parts = newVer.split('.').map(Number)
-  const v2Parts = oldVer.split('.').map(Number)
-  for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
-    const v1 = v1Parts[i] || 0
-    const v2 = v2Parts[i] || 0
-    if (v1 > v2) return true
-    if (v1 < v2) return false
-  }
-  return false
-}
 
 // 悬浮球显示模式：'stock'=股票盈亏, 'gold'=黄金实时价, 'none'=不显示
 const ballDisplayMode = ref('stock')
@@ -239,17 +223,7 @@ onMounted(async () => {
   }
 
   // 检测更新状态 (用于设置页下方的绿点提示)
-  const pendingRaw = localStorage.getItem('pending_update')
-  if (pendingRaw) {
-    try {
-      const pending = JSON.parse(pendingRaw)
-      if (pending.version && isNewerVersion(pending.version, version)) {
-        hasPendingUpdate.value = true
-      }
-    } catch {
-      /* ignore */
-    }
-  }
+  checkPendingUpdate()
 
   window.addEventListener('keydown', handleKeyDown)
 
