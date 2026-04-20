@@ -111,9 +111,9 @@ export default {
 
   // Modal.vue
   initialCost: '初始成本',
-  tradePrice: '成交价格',
+  tradePrice: '💰成交价格',
   lotsHint: '手数(1手=100股)',
-  deltaLots: '变动手数',
+  deltaLots: '🖐️变动手数',
   addPosition: '添加持仓',
   adjustPosition: '调仓确认',
   tradeBuy: '买入',

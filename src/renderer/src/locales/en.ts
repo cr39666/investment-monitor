@@ -113,9 +113,9 @@ export default {
 
   // Modal.vue
   initialCost: 'Initial Cost',
-  tradePrice: 'Trade Price',
+  tradePrice: '💰Trade Price',
   lotsHint: 'Lots (1 lot = 100 shares)',
-  deltaLots: 'Delta Lots',
+  deltaLots: '🖐️Delta Lots',
   addPosition: 'Add Position',
   adjustPosition: 'Adjust Position',
   tradeBuy: 'Buy',
