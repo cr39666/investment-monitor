@@ -23,6 +23,10 @@ export default {
   default: 'Default',
   appVersion: 'Version',
   autoLaunch: 'Auto Start',
+  splitColumns: 'Split Stock Columns',
+  splitChg: '涨跌幅',
+  splitPnl: '总盈比',
+  splitVal: '市值',
 
   // About.vue
   investment: 'A-shares & Gold & Funds',

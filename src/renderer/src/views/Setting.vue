@@ -136,6 +136,17 @@ const changeBallDisplayMode = (mode: string) => {
   localStorage.setItem('ball_display_mode', mode)
 }
 
+// 拆分列（涨跌幅/总盈比/市值）— 多选数组
+const splitColumns = ref<string[]>([])
+const toggleSplitColumn = (col: string) => {
+  if (splitColumns.value.includes(col)) {
+    splitColumns.value = splitColumns.value.filter((c) => c !== col)
+  } else {
+    splitColumns.value.push(col)
+  }
+  localStorage.setItem('stock_splitColumns', JSON.stringify(splitColumns.value))
+}
+
 const showModules = ref<string[]>(['stock', 'gold', 'fund'])
 const toggleModule = (module: string) => {
   if (showModules.value.includes(module)) {
@@ -208,6 +219,27 @@ onMounted(async () => {
   const hotkeySaved = localStorage.getItem('global_hotkey')
   if (hotkeySaved !== null) {
     globalHotkey.value = hotkeySaved
+  }
+
+  // 加载拆分列配置（兼容旧布尔值格式）
+  const splitSaved = localStorage.getItem('stock_splitColumns')
+  if (splitSaved !== null) {
+    try {
+      const parsed = JSON.parse(splitSaved)
+      if (Array.isArray(parsed)) {
+        splitColumns.value = parsed
+      } else if (parsed === true) {
+        // 旧格式兼容：布尔 true 迁移为全选
+        splitColumns.value = ['chg', 'pnl', 'val']
+        localStorage.setItem('stock_splitColumns', JSON.stringify(splitColumns.value))
+      }
+    } catch {
+      // 旧格式 'true'/'false' 字符串
+      if (splitSaved === 'true') {
+        splitColumns.value = ['chg', 'pnl', 'val']
+        localStorage.setItem('stock_splitColumns', JSON.stringify(splitColumns.value))
+      }
+    }
   }
 
   // 初始化自启动状态：优先从系统读取实际状态
@@ -333,6 +365,31 @@ onUnmounted(() => {
             :class="{ active: showModules.includes('fund') }"
             @click="toggleModule('fund')"
             >{{ t('moduleFund') }}</span
+          >
+        </div>
+      </div>
+      <div class="setting-item">
+        <span class="label">{{ t('splitColumns') }}</span>
+        <div class="lang-select">
+          <span
+            class="lang-option"
+            :class="{ active: splitColumns.includes('chg') }"
+            @click="toggleSplitColumn('chg')"
+            >{{ t('splitChg') }}</span
+          >
+          <span class="lang-divider">|</span>
+          <span
+            class="lang-option"
+            :class="{ active: splitColumns.includes('pnl') }"
+            @click="toggleSplitColumn('pnl')"
+            >{{ t('splitPnl') }}</span
+          >
+          <span class="lang-divider">|</span>
+          <span
+            class="lang-option"
+            :class="{ active: splitColumns.includes('val') }"
+            @click="toggleSplitColumn('val')"
+            >{{ t('splitVal') }}</span
           >
         </div>
       </div>

@@ -23,6 +23,10 @@ export default {
   default: '默认',
   appVersion: '版本号',
   autoLaunch: '开机自启',
+  splitColumns: '拆分股票列',
+  splitChg: '涨跌幅',
+  splitPnl: '总盈比',
+  splitVal: '市值',
 
   // About.vue
   investment: 'A股&黄金&基金',

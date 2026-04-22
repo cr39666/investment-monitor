@@ -23,6 +23,10 @@ export default {
   default: 'Default',
   appVersion: 'Version',
   autoLaunch: 'Auto Start',
+  splitColumns: 'Split Stock Columns',
+  splitChg: 'Chg%',
+  splitPnl: 'PnL%',
+  splitVal: 'Val',
 
   // About.vue
   investment: 'A-shares & Gold & Funds',
