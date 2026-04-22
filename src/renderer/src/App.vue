@@ -41,6 +41,10 @@ const handleUpdateAvailable = (_event, info: any) => {
   }
   localStorage.setItem('pending_update', JSON.stringify(updateData))
 
+  // 只在主视图页面（股票/黄金/基金）弹出更新 Toast
+  const mainViews = ['/', '/gold', '/fund']
+  if (!mainViews.includes(router.currentRoute.value.path)) return
+
   const msg = newVersion ? t('newVersionFound', { version: newVersion }) : t('newVersionFoundGeneric')
 
   toastRef.value?.show(msg, 'alert', 5000, () => {
