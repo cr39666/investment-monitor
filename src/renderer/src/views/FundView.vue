@@ -279,9 +279,10 @@ const calculateMarketValue = (fund: FundItem): number => {
 }
 
 // 最后一列展示模式：0=持有天数, 1=持仓市值
-const lastColMode = ref(0)
+const lastColMode = ref(parseInt(localStorage.getItem('fund_lastColMode') || '0'))
 const toggleLastColMode = () => {
   lastColMode.value = (lastColMode.value + 1) % 2
+  localStorage.setItem('fund_lastColMode', String(lastColMode.value))
 }
 
 // 总持仓盈亏

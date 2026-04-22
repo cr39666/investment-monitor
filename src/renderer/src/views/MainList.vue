@@ -65,15 +65,17 @@ const goToFund = (): void => {
 const visibleModules = ref<string[]>(['stock', 'gold', 'fund'])
 
 // Price 列展示模式：0=现价, 1=涨跌幅, 2=现价/涨跌幅
-const priceDisplayMode = ref(0)
+const priceDisplayMode = ref(parseInt(localStorage.getItem('stock_priceDisplayMode') || '0'))
 const togglePriceDisplayMode = () => {
   priceDisplayMode.value = (priceDisplayMode.value + 1) % 3
+  localStorage.setItem('stock_priceDisplayMode', String(priceDisplayMode.value))
 }
 
 // Qty 列的展示模式：0=持仓手数, 1=价格提醒
-const qtyDisplayMode = ref(0)
+const qtyDisplayMode = ref(parseInt(localStorage.getItem('stock_qtyDisplayMode') || '0'))
 const toggleQtyDisplayMode = (): void => {
   qtyDisplayMode.value = (qtyDisplayMode.value + 1) % 2
+  localStorage.setItem('stock_qtyDisplayMode', String(qtyDisplayMode.value))
 }
 
 // 排序状态（持久化）
@@ -192,27 +194,31 @@ const toggleNameDisplay = (code: string) => {
 }
 
 // Name 列全局展示模式：0=名称, 1=代码
-const nameDisplayMode = ref(0)
+const nameDisplayMode = ref(parseInt(localStorage.getItem('stock_nameDisplayMode') || '0'))
 const toggleNameDisplayMode = () => {
   nameDisplayMode.value = (nameDisplayMode.value + 1) % 2
+  localStorage.setItem('stock_nameDisplayMode', String(nameDisplayMode.value))
 }
 
 // D.PnL 列展示模式：0=当日盈亏额, 1=当日盈亏比(%), 2=盈亏额/盈亏比
-const dpnlDisplayMode = ref(0)
+const dpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_dpnlDisplayMode') || '0'))
 const toggleDpnlDisplayMode = () => {
   dpnlDisplayMode.value = (dpnlDisplayMode.value + 1) % 3
+  localStorage.setItem('stock_dpnlDisplayMode', String(dpnlDisplayMode.value))
 }
 
 // T.PnL 列展示模式：0=总盈亏额, 1=总盈亏比(%), 2=盈亏额/盈亏比
-const tpnlDisplayMode = ref(0)
+const tpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_tpnlDisplayMode') || '0'))
 const toggleTpnlDisplayMode = () => {
   tpnlDisplayMode.value = (tpnlDisplayMode.value + 1) % 3
+  localStorage.setItem('stock_tpnlDisplayMode', String(tpnlDisplayMode.value))
 }
 
 // Avg 列展示模式：0=均摊成本, 1=持仓市值, 2=成本/市值
-const avgDisplayMode = ref(0)
+const avgDisplayMode = ref(parseInt(localStorage.getItem('stock_avgDisplayMode') || '0'))
 const toggleAvgDisplayMode = () => {
   avgDisplayMode.value = (avgDisplayMode.value + 1) % 3
+  localStorage.setItem('stock_avgDisplayMode', String(avgDisplayMode.value))
 }
 
 // 选中的行代码（多选）

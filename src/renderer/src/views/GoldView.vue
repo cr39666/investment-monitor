@@ -47,9 +47,10 @@ const toggleCensor = () => {
 }
 
 // 盈亏显示切换
-const showPnLType = ref<'value' | 'percent'>('value')
+const showPnLType = ref<'value' | 'percent'>((localStorage.getItem('gold_showPnLType') as 'value' | 'percent') || 'value')
 const togglePnLDisplay = () => {
   showPnLType.value = showPnLType.value === 'value' ? 'percent' : 'value'
+  localStorage.setItem('gold_showPnLType', showPnLType.value)
 }
 
 // 加载黄金持仓
