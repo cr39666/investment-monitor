@@ -1,4 +1,14 @@
-import { app, shell, BrowserWindow, ipcMain, Tray, Menu, globalShortcut, Notification } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  Tray,
+  Menu,
+  globalShortcut,
+  Notification,
+  screen
+} from 'electron'
 import { join, dirname } from 'path'
 import { execSync } from 'child_process'
 import icon from '../../resources/icon.png?asset'
@@ -12,6 +22,8 @@ let currentHotkey: string = ''
 let ballAlwaysOnTop = true
 let windowAlwaysOnTop = false
 let currentLang: string = 'default'
+// 展开前保存悬浮球位置，切回时恢复
+let ballPosition: { x: number; y: number } | null = null
 
 // 托盘菜单多语言文本
 const trayTexts: Record<string, { openMonitor: string; openBall: string; quit: string; tooltip: string }> = {
@@ -59,6 +71,59 @@ const ballMenuTexts: Record<
   }
 }
 
+/**
+ * 智能调整窗口展开位置，防止溢出屏幕。
+ * 根据当前窗口位置和目标尺寸，选择最佳展开方向：
+ * - 默认向右下展开（锚点=左上角）
+ * - 如果右侧空间不足，则向左展开
+ * - 如果下方空间不足，则向上展开
+ *
+ * 使用 getBounds() 获取窗口外框尺寸（含 DWM 阴影边框），
+ * 避免 transparent 窗口的隐形边框导致计算偏差。
+ */
+function adjustWindowPosition(win: BrowserWindow, targetW: number, targetH: number): void {
+  const bounds = win.getBounds()
+  const { x, y, width: boundsW, height: boundsH } = bounds
+
+  // 如果当前是悬浮球尺寸，保存位置以便切回时恢复
+  const [curContentW, curContentH] = win.getContentSize()
+  if (curContentW <= 100 && curContentH <= 100) {
+    ballPosition = { x, y }
+  }
+
+  // 计算外框与内容区的差值（标题栏、边框等），展开后仍会保持
+  const frameDeltaW = boundsW - curContentW
+  const frameDeltaH = boundsH - curContentH
+  const expandedW = targetW + frameDeltaW
+  const expandedH = targetH + frameDeltaH
+
+  const display = screen.getDisplayNearestPoint({ x, y })
+  const { x: sx, y: sy, width: sw, height: sh } = display.workArea
+
+  let newX = x
+  let newY = y
+
+  // 水平方向：如果向右展开会超出屏幕右边界，则将窗口右边缘对齐到当前窗口右边缘（向左展开）
+  if (x + expandedW > sx + sw) {
+    newX = x + boundsW - expandedW
+  }
+  // 确保不超出左边界
+  if (newX < sx) {
+    newX = sx
+  }
+
+  // 垂直方向：如果向下展开会超出屏幕下边界，则将窗口下边缘对齐到当前窗口下边缘（向上展开）
+  if (y + expandedH > sy + sh) {
+    newY = y + boundsH - expandedH
+  }
+  // 确保不超出上边界
+  if (newY < sy) {
+    newY = sy
+  }
+
+  win.setPosition(newX, newY)
+}
+
 function applyAlwaysOnTop(w: number, h: number): void {
   if (mainWindow) {
     if (w <= 100 && h <= 100) {
@@ -82,12 +147,18 @@ function toggleMainWindow(): void {
     mainWindow.setContentSize(80, 80)
     mainWindow.setResizable(false)
     mainWindow.setSkipTaskbar(true)
+    // 恢复展开前保存的悬浮球位置
+    if (ballPosition) {
+      mainWindow.setPosition(ballPosition.x, ballPosition.y)
+      ballPosition = null
+    }
     applyAlwaysOnTop(80, 80)
   } else {
     // 否则展开为窗口界面，让渲染进程恢复到上次浏览的主视图
     mainWindow.webContents.send('navigate-back')
     mainWindow.show()
     mainWindow.setSkipTaskbar(false)
+    adjustWindowPosition(mainWindow, 400, 600)
     mainWindow.setResizable(true)
     mainWindow.setContentSize(400, 600)
     mainWindow.setResizable(false)
@@ -183,6 +254,7 @@ function createTray(): void {
       click: () => {
         mainWindow?.webContents.send('navigate-back')
         mainWindow?.setSkipTaskbar(false)
+        if (mainWindow) adjustWindowPosition(mainWindow, 400, 600)
         mainWindow?.setResizable(true)
         mainWindow?.setContentSize(400, 600)
         mainWindow?.setResizable(false)
@@ -198,6 +270,11 @@ function createTray(): void {
         mainWindow?.setContentSize(80, 80)
         mainWindow?.setResizable(false)
         mainWindow?.setSkipTaskbar(true)
+        // 恢复展开前保存的悬浮球位置
+        if (ballPosition && mainWindow) {
+          mainWindow.setPosition(ballPosition.x, ballPosition.y)
+          ballPosition = null
+        }
         applyAlwaysOnTop(80, 80)
         mainWindow?.show()
       }
@@ -287,6 +364,15 @@ app.whenReady().then(() => {
       const w = Math.ceil(width)
       const h = Math.ceil(height)
 
+      // 从悬浮球展开为主界面时，智能调整展开方向
+      const [curW, curH] = browserWindow.getContentSize()
+      if (curW <= 100 && curH <= 100 && (w > 100 || h > 100)) {
+        adjustWindowPosition(browserWindow, w, h)
+      }
+
+      // 从主界面切回悬浮球时需要恢复位置
+      const isBackToBall = (curW > 100 || curH > 100) && w <= 100 && h <= 100
+
       if (w > 100 || h > 100) {
         browserWindow.setSkipTaskbar(false)
       } else {
@@ -298,6 +384,12 @@ app.whenReady().then(() => {
       browserWindow.setResizable(true)
       browserWindow.setContentSize(w, h, false)
       browserWindow.setResizable(false)
+
+      // 恢复位置必须在 setContentSize 之后，确保外框/阴影尺寸与保存时一致
+      if (isBackToBall && ballPosition) {
+        browserWindow.setPosition(ballPosition.x, ballPosition.y)
+        ballPosition = null
+      }
     }
   })
 
