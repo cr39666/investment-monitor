@@ -26,7 +26,16 @@ interface StockQuote {
 
 const totalDailyPnl = ref(0)
 const hasStocks = ref(false)
-const goldPrice = ref(0)
+// 从缓存恢复悬浮球金价，避免获取失败时显示 '--'
+const BALL_GOLD_CACHE_KEY = 'ball_gold_price_cache'
+const loadBallGoldCache = (): number => {
+  try {
+    const raw = localStorage.getItem(BALL_GOLD_CACHE_KEY)
+    if (raw) return parseFloat(raw) || 0
+  } catch { /* ignore */ }
+  return 0
+}
+const goldPrice = ref(loadBallGoldCache())
 // 悬浮球显示模式：'stock'=股票盈亏, 'gold'=黄金实时价, 'none'=不显示
 const ballDisplayMode = ref('stock')
 const isHovered = ref(false)
@@ -165,6 +174,8 @@ const fetchGoldPrice = async () => {
     const data = await res.json()
     if (data?.price) {
       goldPrice.value = data.price / OZ_TO_GRAM
+      // 缓存成功获取的金价
+      localStorage.setItem(BALL_GOLD_CACHE_KEY, String(goldPrice.value))
     }
   } catch {
     /* ignore */

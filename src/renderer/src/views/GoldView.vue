@@ -22,9 +22,31 @@ interface GoldHolding {
 type Currency = 'CNY' | 'USD'
 
 const currency = ref<Currency>((localStorage.getItem('gold_currency') as Currency) || 'CNY')
-const goldPrice = ref<number | null>(null)
-const silverPrice = ref<number | null>(null)
-const goldPriceCNY = ref<number | null>(null) // 专门用于持仓计算的 CNY 价格
+
+// 从缓存中恢复上次成功获取的价格，避免刷新失败时显示 '--'
+const PRICE_CACHE_KEY = 'gold_price_cache'
+const loadPriceCache = (): {
+  goldPrice: number | null
+  silverPrice: number | null
+  goldPriceCNY: number | null
+  currency: Currency
+} => {
+  try {
+    const raw = localStorage.getItem(PRICE_CACHE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {
+    /* ignore */
+  }
+  return { goldPrice: null, silverPrice: null, goldPriceCNY: null, currency: 'CNY' }
+}
+const priceCache = loadPriceCache()
+// 只有当缓存的货币与当前一致时，才恢复显示价格（否则币种不匹配会显示错误值）
+const cachedGold = priceCache.currency === currency.value ? priceCache.goldPrice : null
+const cachedSilver = priceCache.currency === currency.value ? priceCache.silverPrice : null
+
+const goldPrice = ref<number | null>(cachedGold)
+const silverPrice = ref<number | null>(cachedSilver)
+const goldPriceCNY = ref<number | null>(priceCache.goldPriceCNY) // 专门用于持仓计算的 CNY 价格
 const goldHolding = ref<GoldHolding | null>(null)
 const fetchError = ref(false)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -47,7 +69,9 @@ const toggleCensor = () => {
 }
 
 // 盈亏显示切换
-const showPnLType = ref<'value' | 'percent'>((localStorage.getItem('gold_showPnLType') as 'value' | 'percent') || 'value')
+const showPnLType = ref<'value' | 'percent'>(
+  (localStorage.getItem('gold_showPnLType') as 'value' | 'percent') || 'value'
+)
 const togglePnLDisplay = () => {
   showPnLType.value = showPnLType.value === 'value' ? 'percent' : 'value'
   localStorage.setItem('gold_showPnLType', showPnLType.value)
@@ -132,17 +156,29 @@ const fetchPrices = async (displayCurrency: Currency = currency.value, commitCur
   // 只在成功获取到新值时才更新，失败时保留上一次的值
   if (goldCNY !== null) goldPriceCNY.value = goldCNY
 
-  if (!commitCurrency) {
-    if (gold !== null) goldPrice.value = gold
-    if (silver !== null) silverPrice.value = silver
-  } else if (gold !== null || silver !== null) {
+  // 切换货币场景：至少有一个价格成功才提交货币变更
+  if (commitCurrency && (gold !== null || silver !== null)) {
     currency.value = displayCurrency
     localStorage.setItem('gold_currency', displayCurrency)
-    if (gold !== null) goldPrice.value = gold
-    if (silver !== null) silverPrice.value = silver
   }
 
+  if (gold !== null) goldPrice.value = gold
+  if (silver !== null) silverPrice.value = silver
+
   fetchError.value = gold === null && silver === null && goldCNY === null
+
+  // 将成功获取的价格缓存到 localStorage，下次打开时可立即显示
+  if (goldPrice.value !== null || silverPrice.value !== null || goldPriceCNY.value !== null) {
+    localStorage.setItem(
+      PRICE_CACHE_KEY,
+      JSON.stringify({
+        goldPrice: goldPrice.value,
+        silverPrice: silverPrice.value,
+        goldPriceCNY: goldPriceCNY.value,
+        currency: currency.value
+      })
+    )
+  }
 }
 
 const OZ_TO_GRAM = 31.1035
