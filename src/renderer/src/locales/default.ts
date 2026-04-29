@@ -140,7 +140,7 @@ export default {
   clearConfirm: '确定要清空列表中的所有股票吗？',
 
   // FloatingBall.vue
-  dragToMove: '拖拽移动，左击展开，右击隐藏',
+  dragToMove: '拖拽移动，左击展开，右击菜单',
 
   // GoldView.vue
   metalGold: 'XAU',

@@ -142,7 +142,7 @@ export default {
   clearConfirm: 'Are you sure you want to clear all stocks?',
 
   // FloatingBall.vue
-  dragToMove: 'Drag to move, left click to expand, right click to hide',
+  dragToMove: 'Drag to move, left click to expand, right click for menu',
 
   // GoldView.vue
   metalGold: 'Gold',
