@@ -257,8 +257,19 @@ onMounted(() => {
   fetchAndRefreshPnl()
   pnlTimer = setInterval(fetchAndRefreshPnl, 1000)
 
-  // 如果初始模式是金价，启动金价定时器
+  // 如果初始模式是金价，先从 GoldView 缓存恢复再发请求
   if (ballDisplayMode.value === 'gold') {
+    if (goldPrice.value <= 0) {
+      try {
+        const goldViewCache = localStorage.getItem('gold_price_cache')
+        if (goldViewCache) {
+          const parsed = JSON.parse(goldViewCache)
+          if (parsed.goldPriceCNY) {
+            goldPrice.value = parsed.goldPriceCNY / OZ_TO_GRAM
+          }
+        }
+      } catch { /* ignore */ }
+    }
     fetchGoldPrice()
     goldTimer = setInterval(fetchGoldPrice, 10000)
   }
@@ -268,8 +279,20 @@ onMounted(() => {
     ballDisplayMode.value = mode
     localStorage.setItem('ball_display_mode', mode)
 
-    // 切换到金价模式时，立即刷新一次并启动独立定时器
+    // 切换到金价模式时，先从 GoldView 的缓存恢复价格避免显示 '--'
     if (mode === 'gold') {
+      if (goldPrice.value <= 0) {
+        // 尝试从 GoldView 的价格缓存恢复（该缓存在 GoldView 每次成功获取后更新）
+        try {
+          const goldViewCache = localStorage.getItem('gold_price_cache')
+          if (goldViewCache) {
+            const parsed = JSON.parse(goldViewCache)
+            if (parsed.goldPriceCNY) {
+              goldPrice.value = parsed.goldPriceCNY / OZ_TO_GRAM
+            }
+          }
+        } catch { /* ignore */ }
+      }
       fetchGoldPrice()
       if (goldTimer) clearInterval(goldTimer)
       goldTimer = setInterval(fetchGoldPrice, 10000)
