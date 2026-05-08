@@ -127,9 +127,10 @@ export default {
   lotsUnit: '手',
   clearPosition: '清仓',
   clearPositionTitle: '清仓确认',
-  clearPositionConfirm: '以 {price} 卖出 {name} 的全部持仓 {amount} 手？',
+  clearPositionConfirm: '以 {price} 卖出 {name} 的全部持仓 {amount} 手，预计手续费 ¥{fee}？',
   isTodayNewPosition: '是当日新建仓',
   isTodayTrade: '是当日操作',
+  estFee: '手续费',
 
   // Confirm.vue
   confirm: '确定',
@@ -203,5 +204,24 @@ export default {
   clickToEdit: '点击编辑持仓',
   holdingDays: '持有天数',
   yieldRate: '收益率',
-  fundBuyDate: '买入日期'
+  fundBuyDate: '买入日期',
+
+  // FeeSettingModal
+  feeSetting: 'Fee Settings',
+  feeSettingTitle: 'A股手续费配置',
+  feeSaved: '手续费配置已保存',
+  feeCommissionRate: '佣金费率',
+  feeCommissionRateUnit: '万分之',
+  feeCommissionRateHint: '默认万2.5，即0.025%',
+  feeMinCommission: '最低佣金',
+  feeMinCommissionUnit: '元',
+  feeMinCommissionHint: '单笔最低佣金，默认5元',
+  feeTransferRate: '过户费费率',
+  feeTransferRateUnit: '万分之',
+  feeTransferRateHint: '默认万0.2，即0.002%',
+  feeStampTaxRate: '印花税费率',
+  feeStampTaxRateUnit: '万分之',
+  feeStampTaxHint: '仅卖出收取，默认万5即0.05%',
+  feeBuyFormula: '买入手续费 = 佣金 + 过户费',
+  feeSellFormula: '卖出手续费 = 佣金 + 印花税 + 过户费'
 }

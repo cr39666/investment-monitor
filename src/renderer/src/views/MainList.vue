@@ -444,6 +444,53 @@ const handleDeleteAction = async () => {
   }
 }
 
+// 读取手续费配置
+interface FeeConfig {
+  commissionRate: number // 佣金费率（万分之X）
+  minCommission: number // 最低佣金（元）
+  transferFeeRate: number // 过户费费率（万分之X）
+  stampTaxRate: number // 印花税费率（万分之X）
+}
+
+const getStockFeeConfig = (): FeeConfig => {
+  const raw = localStorage.getItem('stock_fee_config')
+  if (raw) {
+    try {
+      return JSON.parse(raw)
+    } catch {
+      // ignore
+    }
+  }
+  return { commissionRate: 2.5, minCommission: 5, transferFeeRate: 0.2, stampTaxRate: 5 }
+}
+
+/**
+ * 计算股票交易手续费
+ * @param tradePrice 成交价格
+ * @param lots 手数（正数）
+ * @param direction 'buy' | 'sell'
+ * @returns 总手续费（元）
+ */
+const calcTradeFee = (tradePrice: number, lots: number, direction: 'buy' | 'sell'): number => {
+  const config = getStockFeeConfig()
+  const tradeAmount = tradePrice * lots * 100 // 成交金额
+
+  // 佣金 = 成交金额 × 佣金费率，不低于最低佣金
+  const commission = Math.max(tradeAmount * (config.commissionRate / 10000), config.minCommission)
+
+  // 过户费 = 成交金额 × 过户费费率
+  const transferFee = tradeAmount * (config.transferFeeRate / 10000)
+
+  if (direction === 'buy') {
+    // 买入 = 佣金 + 过户费
+    return commission + transferFee
+  } else {
+    // 卖出 = 佣金 + 印花税 + 过户费
+    const stampTax = tradeAmount * (config.stampTaxRate / 10000)
+    return commission + transferFee + stampTax
+  }
+}
+
 // 调仓逻辑
 const adjustStockFlow = async (stock: StockItem) => {
   const quote = quotes.value[stock.code]
@@ -464,7 +511,9 @@ const adjustStockFlow = async (stock: StockItem) => {
       lastPrice = res.price
       const stockName = quote?.name || stock.code
       const directionText = res.amount > 0 ? t('tradeBuy') : t('tradeSell')
-      const confirmMsg = `${directionText} ${stockName}，${t('tradePrice')} ${res.price.toFixed(2)}，${t('deltaLots')} ${Math.abs(res.amount)}？`
+      const direction = res.amount > 0 ? 'buy' : 'sell'
+      const estFee = calcTradeFee(res.price, Math.abs(res.amount), direction)
+      const confirmMsg = `${directionText} ${stockName}，${t('tradePrice')} ${res.price.toFixed(2)}，${t('deltaLots')} ${Math.abs(res.amount)}，${t('estFee')} ¥${estFee.toFixed(2)}？`
       const confirmed = await confirmRef.value?.open(t('adjustPosition'), confirmMsg)
       if (!confirmed) continue
     }
@@ -473,10 +522,12 @@ const adjustStockFlow = async (stock: StockItem) => {
     if (res.clearPosition) {
       lastPrice = res.price // 保留用户修改过的价格
       const stockName = quote?.name || stock.code
+      const estFee = calcTradeFee(res.price, stock.amount, 'sell')
       const confirmMsg = t('clearPositionConfirm', {
         price: res.price.toFixed(2),
         name: stockName,
-        amount: stock.amount
+        amount: stock.amount,
+        fee: estFee.toFixed(2)
       })
       const confirmed = await confirmRef.value?.open(t('clearPositionTitle'), confirmMsg)
       if (!confirmed) continue // 取消清仓 → 重新显示调仓确认框
@@ -503,9 +554,10 @@ const adjustStockFlow = async (stock: StockItem) => {
     }
 
     if (delta > 0) {
-      // 加仓：计算加权平均成本
+      // 加仓：计算加权平均成本（含买入手续费）
+      const buyFee = calcTradeFee(tradePrice, delta, 'buy')
       const oldTotalVal = stock.amount * stock.cost
-      const addTotalVal = delta * tradePrice
+      const addTotalVal = delta * tradePrice + buyFee // 手续费计入买入成本
       stock.cost = Number(((oldTotalVal + addTotalVal) / newAmount).toFixed(3))
 
       // 当日盈亏修正：仅当日操作时才修正
@@ -513,9 +565,10 @@ const adjustStockFlow = async (stock: StockItem) => {
         stock.dailyRealizedPnl = (stock.dailyRealizedPnl || 0) - (tradePrice - yesterdayClose) * delta * 100
       }
     } else {
-      // 减仓：将卖出部分的盈亏计入已实现盈亏（永久）
+      // 减仓：将卖出部分的盈亏计入已实现盈亏（永久），扣除卖出手续费
       const soldLots = Math.abs(delta)
-      const realized = (tradePrice - stock.cost) * soldLots * 100
+      const sellFee = calcTradeFee(tradePrice, soldLots, 'sell')
+      const realized = (tradePrice - stock.cost) * soldLots * 100 - sellFee // 扣除卖出手续费
       stock.realizedPnl = (stock.realizedPnl || 0) + realized
 
       // 当日盈亏修正：仅当日操作时才修正

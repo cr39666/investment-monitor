@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import DragHandle from '../components/DragHandle.vue'
 import Toast from '../components/Toast.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
+import FeeSettingModal from '../components/FeeSettingModal.vue'
 import { getLastMainView } from '../router'
 import { appVersion as version, useUpdateCheck } from '../composables/useUpdateCheck'
 
@@ -146,6 +147,9 @@ const toggleSplitColumn = (col: string) => {
   }
   localStorage.setItem('stock_splitColumns', JSON.stringify(splitColumns.value))
 }
+
+// 手续费设置弹框
+const showFeeModal = ref(false)
 
 const showModules = ref<string[]>(['stock', 'gold', 'fund'])
 const toggleModule = (module: string) => {
@@ -369,6 +373,16 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="setting-item">
+        <span class="label">{{ t('feeSetting') }}</span>
+        <div class="lang-select">
+          <span class="lang-option fee-link" @click="showFeeModal = true">{{ t('moduleStock') }}</span>
+          <span class="lang-divider">|</span>
+          <span class="lang-option fee-disabled">{{ t('moduleGold') }}</span>
+          <span class="lang-divider">|</span>
+          <span class="lang-option fee-disabled">{{ t('moduleFund') }}</span>
+        </div>
+      </div>
+      <div class="setting-item">
         <span class="label">{{ t('splitColumns') }}</span>
         <div class="lang-select">
           <span
@@ -418,6 +432,7 @@ onUnmounted(() => {
       </div>
     </div>
     <Toast ref="toastRef" />
+    <FeeSettingModal :show="showFeeModal" @close="showFeeModal = false" />
   </div>
 </template>
 
@@ -541,6 +556,20 @@ onUnmounted(() => {
 .lang-divider {
   margin: 0 6px;
   color: rgba(255, 255, 255, 0.3);
+}
+
+.fee-link {
+  color: #2ecc71 !important;
+  cursor: pointer;
+}
+
+.fee-link:hover {
+  text-decoration: underline;
+}
+
+.fee-disabled {
+  color: rgba(255, 255, 255, 0.25) !important;
+  cursor: not-allowed;
 }
 
 .version-item {

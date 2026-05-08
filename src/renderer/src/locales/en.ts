@@ -129,9 +129,10 @@ export default {
   lotsUnit: 'lot(s)',
   clearPosition: 'Sell All',
   clearPositionTitle: 'Sell All Confirmation',
-  clearPositionConfirm: 'Sell all {amount} lot(s) of {name} at {price}?',
+  clearPositionConfirm: 'Sell all {amount} lot(s) of {name} at {price}, est. fee ¥{fee}?',
   isTodayNewPosition: "Today's New Position",
   isTodayTrade: "Today's Trade",
+  estFee: 'Fee',
 
   // Confirm.vue
   confirm: 'Confirm',
@@ -205,5 +206,24 @@ export default {
   clickToEdit: 'Click to edit position',
   holdingDays: 'Holding Days',
   yieldRate: 'Yield Rate',
-  fundBuyDate: 'Buy Date'
+  fundBuyDate: 'Buy Date',
+
+  // FeeSettingModal
+  feeSetting: 'Fee Settings',
+  feeSettingTitle: 'Stock Fee Config',
+  feeSaved: 'Fee config saved',
+  feeCommissionRate: 'Commission Rate',
+  feeCommissionRateUnit: '‱ (per 10k)',
+  feeCommissionRateHint: 'Default 2.5‱ = 0.025%',
+  feeMinCommission: 'Min Commission',
+  feeMinCommissionUnit: 'CNY',
+  feeMinCommissionHint: 'Min per trade, default ¥5',
+  feeTransferRate: 'Transfer Fee',
+  feeTransferRateUnit: '‱ (per 10k)',
+  feeTransferRateHint: 'Default 0.2‱ = 0.002%',
+  feeStampTaxRate: 'Stamp Tax',
+  feeStampTaxRateUnit: '‱ (per 10k)',
+  feeStampTaxHint: 'Sell only, default 5‱ = 0.05%',
+  feeBuyFormula: 'Buy = Commission + Transfer Fee',
+  feeSellFormula: 'Sell = Commission + Stamp Tax + Transfer Fee'
 }
