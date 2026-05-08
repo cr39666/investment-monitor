@@ -15,6 +15,7 @@ const { hasPendingUpdate, checkPendingUpdate } = useUpdateCheck()
 interface GoldHolding {
   grams: number
   avgPrice: number
+  realizedPnl?: number // 已实现盈亏（卖出手续费等累计扣除）
 }
 
 // METALS constant removed as rows are now integrated into the card structure
@@ -102,10 +103,12 @@ const calculateGoldCost = computed(() => {
   return goldHolding.value.grams * goldHolding.value.avgPrice
 })
 
-// 计算黄金总盈亏
+// 计算黄金总盈亏（含已实现盈亏/卖出手续费损耗）
 const calculateGoldTotalPnL = computed(() => {
   if (!goldHolding.value || holdingPricePerGramCNY.value === null) return 0
-  return calculateGoldValue.value - calculateGoldCost.value
+  const floatingPnl = calculateGoldValue.value - calculateGoldCost.value
+  const realizedPnl = goldHolding.value.realizedPnl || 0
+  return floatingPnl + realizedPnl
 })
 
 // 计算黄金收益率
@@ -246,8 +249,41 @@ const toggleHoldingDrawer = () => {
 
 // closeHoldingDrawer removed as expansion is toggled via header
 
+// 读取黄金手续费配置
+interface GoldFeeConfig {
+  buyFeeRate: number // 买入费率 (%)
+  sellFeeRate: number // 卖出费率 (%)
+}
+
+const getGoldFeeConfig = (): GoldFeeConfig => {
+  const raw = localStorage.getItem('gold_fee_config')
+  if (raw) {
+    try {
+      return JSON.parse(raw)
+    } catch {
+      // ignore
+    }
+  }
+  return { buyFeeRate: 0, sellFeeRate: 0.4 }
+}
+
+/**
+ * 计算黄金交易手续费
+ * @param amount 成交金额（元）
+ * @param direction 'buy' | 'sell'
+ * @returns 手续费（元）
+ */
+const calcGoldTradeFee = (amount: number, direction: 'buy' | 'sell'): number => {
+  const config = getGoldFeeConfig()
+  const rate = direction === 'buy' ? config.buyFeeRate : config.sellFeeRate
+  return amount * (rate / 100)
+}
+
 // 处理交易确认
-const handleTradeConfirm = (action: 'buy' | 'sell' | 'init', data: { grams: number; avgPrice?: number }) => {
+const handleTradeConfirm = async (
+  action: 'buy' | 'sell' | 'init',
+  data: { grams: number; avgPrice?: number }
+) => {
   // 交易单价优先使用用户输入的值，否则回退到当前市价
   const transactionPrice = data.avgPrice || holdingPricePerGramCNY.value || 0
 
@@ -262,11 +298,25 @@ const handleTradeConfirm = (action: 'buy' | 'sell' | 'init', data: { grams: numb
     return
   }
 
+  // 二次确认
+  const tradeAmount = data.grams * transactionPrice
+  const direction = action === 'buy' ? 'buy' : 'sell'
+  const estFee = calcGoldTradeFee(tradeAmount, direction)
+  const directionText = action === 'buy' ? t('goldBuyAction') : t('goldSellAction')
+  const confirmMsg = `${directionText} ${data.grams.toFixed(2)}g，${t('tradePrice')} ¥${transactionPrice.toFixed(2)}/g，${t('goldTradeAmount')} ¥${tradeAmount.toFixed(2)}，${t('estFee')} ¥${estFee.toFixed(2)}？`
+  const confirmed = await confirmClearRef.value?.open(t('goldTradeConfirmTitle'), confirmMsg)
+  if (!confirmed) return
+
   if (action === 'buy') {
+    // 计算买入手续费
+    const buyFee = calcGoldTradeFee(tradeAmount, 'buy')
+    // 手续费均摊到每克成本
+    const effectivePrice = (tradeAmount + buyFee) / data.grams
+
     if (goldHolding.value) {
-      // 已有持仓，以交易价格重新计算均价
+      // 已有持仓，以含手续费的价格重新计算均价
       const currentTotalValue = goldHolding.value.grams * goldHolding.value.avgPrice
-      const newValue = data.grams * transactionPrice
+      const newValue = data.grams * effectivePrice
       const newAvgPrice = (currentTotalValue + newValue) / (goldHolding.value.grams + data.grams)
       goldHolding.value.grams += data.grams
       goldHolding.value.avgPrice = newAvgPrice
@@ -274,7 +324,7 @@ const handleTradeConfirm = (action: 'buy' | 'sell' | 'init', data: { grams: numb
       // 首次买入
       goldHolding.value = {
         grams: data.grams,
-        avgPrice: transactionPrice
+        avgPrice: effectivePrice
       }
     }
     localStorage.setItem('gold_holding', JSON.stringify(goldHolding.value))
@@ -282,6 +332,13 @@ const handleTradeConfirm = (action: 'buy' | 'sell' | 'init', data: { grams: numb
   } else {
     // 卖出
     if (!goldHolding.value) return
+
+    // 计算卖出手续费
+    const sellAmount = data.grams * transactionPrice
+    const sellFee = calcGoldTradeFee(sellAmount, 'sell')
+
+    // 将卖出手续费计入已实现盈亏（作为负数扣除）
+    goldHolding.value.realizedPnl = (goldHolding.value.realizedPnl || 0) - sellFee
 
     goldHolding.value.grams -= data.grams
 

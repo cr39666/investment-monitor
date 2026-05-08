@@ -223,5 +223,21 @@ export default {
   feeStampTaxRateUnit: '万分之',
   feeStampTaxHint: '仅卖出收取，默认万5即0.05%',
   feeBuyFormula: '买入手续费 = 佣金 + 过户费',
-  feeSellFormula: '卖出手续费 = 佣金 + 印花税 + 过户费'
+  feeSellFormula: '卖出手续费 = 佣金 + 印花税 + 过户费',
+
+  // GoldFeeSettingModal
+  goldFeeSettingTitle: '黄金手续费配置',
+  goldFeeSaved: '黄金手续费配置已保存',
+  goldBuyFeeRate: '买入费率',
+  goldSellFeeRate: '卖出费率',
+  goldBuyFeeHint: '买入时收取，默认0%',
+  goldSellFeeHint: '卖出时收取，默认0.4%',
+  goldBuyFeeFormula: '买入成本 = 金额 + 金额 × 买入费率',
+  goldSellFeeFormula: '卖出扣除 = 金额 × 卖出费率',
+
+  // 黄金交易二次确认
+  goldBuyAction: '买入',
+  goldSellAction: '卖出',
+  goldTradeAmount: '金额',
+  goldTradeConfirmTitle: '确认交易'
 }

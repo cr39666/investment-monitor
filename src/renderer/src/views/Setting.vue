@@ -6,6 +6,7 @@ import DragHandle from '../components/DragHandle.vue'
 import Toast from '../components/Toast.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import FeeSettingModal from '../components/FeeSettingModal.vue'
+import GoldFeeSettingModal from '../components/GoldFeeSettingModal.vue'
 import { getLastMainView } from '../router'
 import { appVersion as version, useUpdateCheck } from '../composables/useUpdateCheck'
 
@@ -150,6 +151,7 @@ const toggleSplitColumn = (col: string) => {
 
 // 手续费设置弹框
 const showFeeModal = ref(false)
+const showGoldFeeModal = ref(false)
 
 const showModules = ref<string[]>(['stock', 'gold', 'fund'])
 const toggleModule = (module: string) => {
@@ -377,7 +379,7 @@ onUnmounted(() => {
         <div class="lang-select">
           <span class="lang-option fee-link" @click="showFeeModal = true">{{ t('moduleStock') }}</span>
           <span class="lang-divider">|</span>
-          <span class="lang-option fee-disabled">{{ t('moduleGold') }}</span>
+          <span class="lang-option fee-link" @click="showGoldFeeModal = true">{{ t('moduleGold') }}</span>
           <span class="lang-divider">|</span>
           <span class="lang-option fee-disabled">{{ t('moduleFund') }}</span>
         </div>
@@ -433,6 +435,7 @@ onUnmounted(() => {
     </div>
     <Toast ref="toastRef" />
     <FeeSettingModal :show="showFeeModal" @close="showFeeModal = false" />
+    <GoldFeeSettingModal :show="showGoldFeeModal" @close="showGoldFeeModal = false" />
   </div>
 </template>
 

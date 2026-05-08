@@ -225,5 +225,21 @@ export default {
   feeStampTaxRateUnit: '‱ (per 10k)',
   feeStampTaxHint: 'Sell only, default 5‱ = 0.05%',
   feeBuyFormula: 'Buy = Commission + Transfer Fee',
-  feeSellFormula: 'Sell = Commission + Stamp Tax + Transfer Fee'
+  feeSellFormula: 'Sell = Commission + Stamp Tax + Transfer Fee',
+
+  // GoldFeeSettingModal
+  goldFeeSettingTitle: 'Gold Fee Config',
+  goldFeeSaved: 'Gold fee config saved',
+  goldBuyFeeRate: 'Buy Fee Rate',
+  goldSellFeeRate: 'Sell Fee Rate',
+  goldBuyFeeHint: 'Charged on buy, default 0%',
+  goldSellFeeHint: 'Charged on sell, default 0.4%',
+  goldBuyFeeFormula: 'Buy Cost = Amount + Amount × Buy Rate',
+  goldSellFeeFormula: 'Sell Deduction = Amount × Sell Rate',
+
+  // Gold trade confirmation
+  goldBuyAction: 'Buy',
+  goldSellAction: 'Sell',
+  goldTradeAmount: 'Amount',
+  goldTradeConfirmTitle: 'Confirm Trade'
 }

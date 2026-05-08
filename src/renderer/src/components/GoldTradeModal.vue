@@ -69,6 +69,42 @@ const calculationResult = computed(() => {
   }
 })
 
+// 动态计算手续费金额
+const goldFeeAmount = computed(() => {
+  if (!calculationResult.value) return null
+
+  // 计算成交金额
+  const p = parseFloat(tradePrice.value)
+  let tradeAmt = 0
+  if (tradeMode.value === 'grams') {
+    const g = parseFloat(tradeGrams.value)
+    if (isNaN(g) || g <= 0 || isNaN(p) || p <= 0) return null
+    tradeAmt = g * p
+  } else {
+    const a = parseFloat(tradeAmount.value)
+    if (isNaN(a) || a <= 0) return null
+    tradeAmt = a
+  }
+
+  // 读取费率配置
+  let buyRate = 0
+  let sellRate = 0.4
+  try {
+    const raw = localStorage.getItem('gold_fee_config')
+    if (raw) {
+      const config = JSON.parse(raw)
+      buyRate = config.buyFeeRate ?? 0
+      sellRate = config.sellFeeRate ?? 0.4
+    }
+  } catch {
+    // ignore
+  }
+
+  const rate = props.mode === 'buy' ? buyRate : sellRate
+  const fee = tradeAmt * (rate / 100)
+  return fee.toFixed(2)
+})
+
 const close = () => {
   emit('close')
 }
@@ -175,9 +211,9 @@ const confirm = () => {
             </div>
           </div>
 
-          <!-- Final Summary (Fee hint for sell) -->
-          <div v-if="mode === 'sell' && calculationResult" class="modal-summary">
-            <span class="fee-text">{{ t('feeHint', { rate: '0.4%' }) }}</span>
+          <!-- Final Summary (Fee amount for buy/sell) -->
+          <div v-if="mode !== 'init' && goldFeeAmount" class="modal-summary">
+            <span class="fee-text">{{ t('estFee') }}：¥{{ goldFeeAmount }}</span>
           </div>
         </div>
       </div>
