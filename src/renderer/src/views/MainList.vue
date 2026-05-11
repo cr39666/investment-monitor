@@ -560,9 +560,11 @@ const adjustStockFlow = async (stock: StockItem) => {
       const addTotalVal = delta * tradePrice + buyFee // 手续费计入买入成本
       stock.cost = Number(((oldTotalVal + addTotalVal) / newAmount).toFixed(3))
 
-      // 当日盈亏修正：仅当日操作时才修正
-      if (isTodayTrade && yesterdayClose > 0) {
-        stock.dailyRealizedPnl = (stock.dailyRealizedPnl || 0) - (tradePrice - yesterdayClose) * delta * 100
+      // 当日盈亏修正：仅非新建仓的当日操作才修正
+      // 新建仓(buyDate===today)的成本已含手续费，当日盈亏=(现价-成本)×股数，无需额外修正
+      if (isTodayTrade && yesterdayClose > 0 && stock.buyDate !== today) {
+        stock.dailyRealizedPnl =
+          (stock.dailyRealizedPnl || 0) - (tradePrice - yesterdayClose) * delta * 100 - buyFee
       }
     } else {
       // 减仓：将卖出部分的盈亏计入已实现盈亏（永久），扣除卖出手续费
@@ -571,10 +573,10 @@ const adjustStockFlow = async (stock: StockItem) => {
       const realized = (tradePrice - stock.cost) * soldLots * 100 - sellFee // 扣除卖出手续费
       stock.realizedPnl = (stock.realizedPnl || 0) + realized
 
-      // 当日盈亏修正：仅当日操作时才修正
+      // 当日盈亏修正：仅当日操作时才修正（扣除卖出手续费）
       if (isTodayTrade && yesterdayClose > 0) {
         stock.dailyRealizedPnl =
-          (stock.dailyRealizedPnl || 0) + (tradePrice - yesterdayClose) * soldLots * 100
+          (stock.dailyRealizedPnl || 0) + (tradePrice - yesterdayClose) * soldLots * 100 - sellFee
       }
     }
 
