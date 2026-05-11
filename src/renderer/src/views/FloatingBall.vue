@@ -352,7 +352,7 @@ const onContextMenu = (e: MouseEvent) => {
     @click="goToDetail"
     @contextmenu="onContextMenu"
   >
-    <img src="../assets/electron.svg" class="ball-icon" alt="logo" />
+    <img src="../assets/icon.svg" class="ball-icon" alt="logo" />
     <span
       v-if="ballDisplayMode !== 'none' && (ballDisplayMode === 'gold' || hasStocks)"
       class="pnl-text"
@@ -381,8 +381,8 @@ const onContextMenu = (e: MouseEvent) => {
 .ball-icon {
   width: 48px;
   height: 48px;
-  opacity: 0.5;
-  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+  opacity: 0.65;
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.3));
   pointer-events: none; /* 让事件穿透到容器 */
   animation: ball-rotate 6s linear infinite;
   transition:
@@ -393,7 +393,7 @@ const onContextMenu = (e: MouseEvent) => {
 }
 
 .floating-ball-container.is-hovered .ball-icon {
-  opacity: 1;
+  opacity: 0.9;
   animation-duration: 2s;
   filter: drop-shadow(0 0 8px #6988e6aa);
 }

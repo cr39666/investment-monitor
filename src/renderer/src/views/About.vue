@@ -185,13 +185,7 @@ onUnmounted(() => {
       </template>
     </DragHandle>
     <div class="main">
-      <img
-        alt="logo"
-        class="logo"
-        src="../assets/electron.svg"
-        :title="t('clickToShrink')"
-        @click="backToBall"
-      />
+      <img alt="logo" class="logo" src="../assets/icon.svg" :title="t('clickToShrink')" @click="backToBall" />
       <div class="text">
         <span class="vue">{{ t('investment') }}</span>
         {{ t('monitor') }}

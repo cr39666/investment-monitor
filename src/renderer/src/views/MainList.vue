@@ -969,7 +969,7 @@ onUnmounted(() => {
     <DragHandle>
       <template #left>
         <button class="nav-btn" :title="t('backToBall')" @click="goBack">
-          <img src="../assets/electron.svg" class="nav-icon" alt="ball" />
+          <img src="../assets/icon.svg" class="nav-icon" alt="ball" />
         </button>
       </template>
       <template #right>
@@ -1446,12 +1446,8 @@ onUnmounted(() => {
 .nav-icon {
   width: 16px;
   height: 16px;
-  opacity: 0.9;
-  transition: opacity 0.3s ease;
-}
-
-.nav-btn:hover .nav-icon {
-  opacity: 1;
+  filter: brightness(1.3);
+  transition: filter 0.3s ease;
 }
 
 .bottom-actions {
