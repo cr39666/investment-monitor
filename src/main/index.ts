@@ -154,15 +154,11 @@ function toggleMainWindow(): void {
     }
     applyAlwaysOnTop(80, 80)
   } else {
-    // 否则展开为窗口界面，让渲染进程恢复到上次浏览的主视图
+    // 悬浮球 → 展开为窗口界面
+    // 只做路由切换，位置和大小由渲染进程 mounted 后的 resize-window 统一处理
+    // 与鼠标点击展开走完全相同的路径
     mainWindow.webContents.send('navigate-back')
     mainWindow.show()
-    mainWindow.setSkipTaskbar(false)
-    adjustWindowPosition(mainWindow, 400, 600)
-    mainWindow.setResizable(true)
-    mainWindow.setContentSize(400, 600)
-    mainWindow.setResizable(false)
-    applyAlwaysOnTop(400, 600)
   }
 }
 
@@ -252,14 +248,9 @@ function createTray(): void {
     {
       label: texts.openMonitor,
       click: () => {
-        mainWindow?.webContents.send('navigate-back')
-        mainWindow?.setSkipTaskbar(false)
-        if (mainWindow) adjustWindowPosition(mainWindow, 400, 600)
-        mainWindow?.setResizable(true)
-        mainWindow?.setContentSize(400, 600)
-        mainWindow?.setResizable(false)
-        applyAlwaysOnTop(400, 600)
-        mainWindow?.show()
+        if (!mainWindow) return
+        mainWindow.webContents.send('navigate-back')
+        mainWindow.show()
       }
     },
     {
