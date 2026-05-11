@@ -1,6 +1,6 @@
 {
   "name": "investment-monitor",
-  "version": "1.5.10",
+  "version": "1.5.11",
   "description": "Investment market monitor",
   "main": "./out/main/index.js",
   "author": "Croyell",
