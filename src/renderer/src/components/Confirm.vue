@@ -8,23 +8,43 @@ const confirmTitle = ref('')
 const confirmMessage = ref('')
 let resolvePromise: ((value: boolean) => void) | null = null
 
+const handleKeydown = (e: KeyboardEvent) => {
+  if (!isVisible.value) return
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    e.stopPropagation()
+    handleConfirm()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
+    handleCancel()
+  }
+}
+
 const open = (title: string, message: string) => {
   confirmTitle.value = title
   confirmMessage.value = message
   isVisible.value = true
+  // 使用 capture 以便先于其他全局快捷键响应
+  window.addEventListener('keydown', handleKeydown, true)
 
   return new Promise<boolean>((resolve) => {
     resolvePromise = resolve
   })
 }
 
-const handleConfirm = () => {
+const close = () => {
   isVisible.value = false
+  window.removeEventListener('keydown', handleKeydown, true)
+}
+
+const handleConfirm = () => {
+  close()
   resolvePromise?.(true)
 }
 
 const handleCancel = () => {
-  isVisible.value = false
+  close()
   resolvePromise?.(false)
 }
 

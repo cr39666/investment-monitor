@@ -23,6 +23,21 @@ const costInput = ref<HTMLInputElement | null>(null)
 
 let resolvePromise: ((result: FundEditResult | null) => void) | null = null
 
+const handleKeydown = (e: KeyboardEvent) => {
+  if (!visible.value) return
+  if (e.key === 'Enter') {
+    const target = e.target as HTMLElement | null
+    if (target?.tagName === 'TEXTAREA' || (e as KeyboardEvent & { isComposing?: boolean }).isComposing) return
+    e.preventDefault()
+    e.stopPropagation()
+    handleConfirm()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
+    handleCancel()
+  }
+}
+
 /**
  * 打开编辑弹窗，返回 Promise
  * resolve FundEditResult 表示确认，null 表示取消
@@ -42,6 +57,7 @@ const open = (
   editBuyDate.value = buyDate
   editIsNew.value = isNew
   visible.value = true
+  window.addEventListener('keydown', handleKeydown, true)
 
   nextTick(() => {
     costInput.value?.focus()
@@ -55,6 +71,7 @@ const open = (
 
 const handleConfirm = () => {
   visible.value = false
+  window.removeEventListener('keydown', handleKeydown, true)
   resolvePromise?.({
     code: editCode.value,
     cost: editCost.value,
@@ -67,6 +84,7 @@ const handleConfirm = () => {
 
 const handleCancel = (): void => {
   visible.value = false
+  window.removeEventListener('keydown', handleKeydown, true)
   resolvePromise?.(null)
   resolvePromise = null
 }
@@ -93,7 +111,6 @@ defineExpose({ open })
               type="number"
               step="0.0001"
               class="edit-input"
-              @keyup.enter="handleConfirm"
             />
           </div>
           <div class="edit-row">
@@ -103,7 +120,6 @@ defineExpose({ open })
               type="number"
               step="100"
               class="edit-input"
-              @keyup.enter="handleConfirm"
             />
           </div>
           <div class="edit-row">

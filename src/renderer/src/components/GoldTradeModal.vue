@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, nextTick } from 'vue'
+import { ref, watch, computed, nextTick, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Toast from './Toast.vue'
 
@@ -35,23 +35,7 @@ const tradeAmount = ref('')
 const tradePrice = ref('') // 成本均价
 const mainInput = ref<HTMLInputElement | null>(null)
 
-// 初始化和重置
-watch(
-  () => props.show,
-  (newShow) => {
-    if (newShow) {
-      tradeGrams.value = ''
-      tradeAmount.value = ''
-      tradePrice.value = props.mode === 'init' ? '' : props.holdingPricePerGram?.toFixed(2) || ''
-      tradeMode.value = 'grams'
-      nextTick(() => {
-        mainInput.value?.focus()
-        mainInput.value?.select()
-      })
-    }
-  },
-  { immediate: true }
-)
+// 初始化和重置（watch 在 confirm/close/handleKeydown 定义之后再声明，避免 TDZ）
 
 // 辅助计算结果 (仅用于显示提示)
 const calculationResult = computed(() => {
@@ -144,6 +128,45 @@ const confirm = () => {
 
   close()
 }
+
+const handleKeydown = (e: KeyboardEvent) => {
+  if (!props.show) return
+  if (e.key === 'Enter') {
+    const target = e.target as HTMLElement | null
+    if (target?.tagName === 'TEXTAREA' || (e as KeyboardEvent & { isComposing?: boolean }).isComposing) return
+    e.preventDefault()
+    e.stopPropagation()
+    confirm()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
+    close()
+  }
+}
+
+watch(
+  () => props.show,
+  (newShow) => {
+    if (newShow) {
+      tradeGrams.value = ''
+      tradeAmount.value = ''
+      tradePrice.value = props.mode === 'init' ? '' : props.holdingPricePerGram?.toFixed(2) || ''
+      tradeMode.value = 'grams'
+      window.addEventListener('keydown', handleKeydown, true)
+      nextTick(() => {
+        mainInput.value?.focus()
+        mainInput.value?.select()
+      })
+    } else {
+      window.removeEventListener('keydown', handleKeydown, true)
+    }
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown, true)
+})
 </script>
 
 <template>
@@ -177,7 +200,6 @@ const confirm = () => {
               class="modal-input"
               :placeholder="t('enterGrams')"
               step="0.0001"
-              @keydown.enter="confirm"
             />
             <input
               v-else
@@ -187,7 +209,6 @@ const confirm = () => {
               class="modal-input"
               :placeholder="t('enterAmount')"
               step="0.01"
-              @keydown.enter="confirm"
             />
             <label>{{ tradeMode === 'grams' ? t('gramsLabel') : t('valLabel') }}</label>
           </div>
@@ -200,7 +221,6 @@ const confirm = () => {
               class="modal-input"
               :placeholder="mode === 'init' ? t('avgCostPrice') : t('tradePriceLabel')"
               step="0.01"
-              @keydown.enter="confirm"
             />
             <label>{{ mode === 'init' ? t('avgCostPrice') : t('tradePriceLabel') }}</label>
 

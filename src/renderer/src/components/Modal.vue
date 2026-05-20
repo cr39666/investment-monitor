@@ -40,6 +40,22 @@ const parsedMessage = computed(() => {
 // 当前价格是否上涨（需要从外部传入涨跌信息）
 const isPriceUp = ref<boolean | null>(null)
 
+const handleKeydown = (e: KeyboardEvent) => {
+  if (!isVisible.value) return
+  if (e.key === 'Enter') {
+    // 在 textarea / 中文输入法 composing 时不拦截
+    const target = e.target as HTMLElement | null
+    if (target?.tagName === 'TEXTAREA' || (e as KeyboardEvent & { isComposing?: boolean }).isComposing) return
+    e.preventDefault()
+    e.stopPropagation()
+    handleConfirm()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
+    handleCancel()
+  }
+}
+
 const open = (
   type: 'transaction' | 'add' | 'alert',
   title: string,
@@ -64,6 +80,7 @@ const open = (
   isTodayNewPosition.value = false // 默认不是当日新建仓
   isTodayTrade.value = true // 默认当日操作
   isVisible.value = true
+  window.addEventListener('keydown', handleKeydown, true)
 
   nextTick(() => {
     if (modalType.value === 'alert') {
@@ -88,6 +105,11 @@ const showHint = (msg: string) => {
   }, 1500)
 }
 
+const closeModal = () => {
+  isVisible.value = false
+  window.removeEventListener('keydown', handleKeydown, true)
+}
+
 const handleConfirm = () => {
   // 添加股票时，验证手数必须大于0
   if (modalType.value === 'add' && amount.value <= 0) {
@@ -99,7 +121,7 @@ const handleConfirm = () => {
     showHint(t('tradeAmountZero'))
     return
   }
-  isVisible.value = false
+  closeModal()
   // 清仓模式
   if (modalType.value === 'transaction' && tradeDirection.value === 'clear') {
     resolvePromise?.({
@@ -129,7 +151,7 @@ const handleConfirm = () => {
 }
 
 const handleClear = () => {
-  isVisible.value = false
+  closeModal()
   resolvePromise?.({
     confirmed: true,
     clear: true,
@@ -138,7 +160,7 @@ const handleClear = () => {
 }
 
 const handleCancel = () => {
-  isVisible.value = false
+  closeModal()
   resolvePromise?.({ confirmed: false })
 }
 
@@ -165,7 +187,6 @@ defineExpose({ open })
                   type="number"
                   class="modal-input"
                   step="0.01"
-                  @keyup.enter="handleConfirm"
                 />
                 <label>{{ t('targetPrice') }}</label>
                 <button class="clear-icon-btn" :title="t('clearAlert')" @click="handleClear">🗑️</button>
@@ -227,31 +248,18 @@ defineExpose({ open })
                   type="number"
                   class="modal-input"
                   step="0.001"
-                  @keyup.enter="handleConfirm"
                 />
                 <label>{{ modalType === 'add' ? t('initialCost') : t('tradePrice') }}</label>
               </div>
               <!-- 添加模式或有持仓时显示手数输入（清仓不需要） -->
               <div v-if="modalType === 'add' || tradeDirection !== 'clear'" class="modal-input-group">
-                <input
-                  ref="qtyInput"
-                  v-model.number="amount"
-                  type="number"
-                  class="modal-input"
-                  :min="0"
-                  @keyup.enter="handleConfirm"
-                />
+                <input ref="qtyInput" v-model.number="amount" type="number" class="modal-input" :min="0" />
                 <label>{{ modalType === 'add' ? t('lotsHint') : t('deltaLots') }}</label>
               </div>
               <!-- 当日新建仓选项 -->
               <div v-if="modalType === 'add'" class="modal-checkbox-group">
                 <label class="checkbox-label">
-                  <input
-                    v-model="isTodayNewPosition"
-                    type="checkbox"
-                    class="checkbox-input"
-                    @keyup.enter="handleConfirm"
-                  />
+                  <input v-model="isTodayNewPosition" type="checkbox" class="checkbox-input" />
                   <span class="checkbox-custom"></span>
                   <span class="checkbox-text">{{ t('isTodayNewPosition') }}</span>
                 </label>
@@ -259,12 +267,7 @@ defineExpose({ open })
               <!-- 调仓模式：是否当日操作 -->
               <div v-if="modalType === 'transaction'" class="modal-checkbox-group">
                 <label class="checkbox-label">
-                  <input
-                    v-model="isTodayTrade"
-                    type="checkbox"
-                    class="checkbox-input"
-                    @keyup.enter="handleConfirm"
-                  />
+                  <input v-model="isTodayTrade" type="checkbox" class="checkbox-input" />
                   <span class="checkbox-custom"></span>
                   <span class="checkbox-text">{{ t('isTodayTrade') }}</span>
                 </label>

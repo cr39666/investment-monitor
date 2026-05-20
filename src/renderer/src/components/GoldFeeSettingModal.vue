@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Toast from './Toast.vue'
 
@@ -42,20 +42,6 @@ const loadConfig = () => {
   }
 }
 
-watch(
-  () => props.show,
-  (newShow) => {
-    if (newShow) {
-      loadConfig()
-      nextTick(() => {
-        firstInput.value?.focus()
-        firstInput.value?.select()
-      })
-    }
-  },
-  { immediate: true }
-)
-
 const close = () => {
   emit('close')
 }
@@ -71,6 +57,42 @@ const save = () => {
     close()
   }, 300)
 }
+
+const handleKeydown = (e: KeyboardEvent) => {
+  if (!props.show) return
+  if (e.key === 'Enter') {
+    const target = e.target as HTMLElement | null
+    if (target?.tagName === 'TEXTAREA' || (e as KeyboardEvent & { isComposing?: boolean }).isComposing) return
+    e.preventDefault()
+    e.stopPropagation()
+    save()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
+    close()
+  }
+}
+
+watch(
+  () => props.show,
+  (newShow) => {
+    if (newShow) {
+      loadConfig()
+      window.addEventListener('keydown', handleKeydown, true)
+      nextTick(() => {
+        firstInput.value?.focus()
+        firstInput.value?.select()
+      })
+    } else {
+      window.removeEventListener('keydown', handleKeydown, true)
+    }
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown, true)
+})
 </script>
 
 <template>
@@ -107,7 +129,6 @@ const save = () => {
                 type="number"
                 class="modal-input"
                 step="0.01"
-                @keydown.enter="save"
               />
               <span class="input-unit">%</span>
             </div>
