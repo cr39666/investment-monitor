@@ -63,12 +63,6 @@ let timer: ReturnType<typeof setInterval> | null = null
 const containerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
-// 隐私模式
-const isCensored = ref(false)
-const toggleCensor = () => {
-  isCensored.value = !isCensored.value
-}
-
 // 盈亏显示切换
 const showPnLType = ref<'value' | 'percent'>(
   (localStorage.getItem('gold_showPnLType') as 'value' | 'percent') || 'value'
@@ -466,11 +460,10 @@ onUnmounted(() => {
               🥇<span class="metal-label-text">{{ t('metalGold') }}</span>
             </span>
             <span class="metal-price gold">
-              <span v-if="!isCensored && goldPrice !== null">
+              <span v-if="goldPrice !== null">
                 {{ formatPrice(goldPrice) }}<small class="unit">{{ priceUnit() }}</small>
               </span>
-              <span v-else-if="!isCensored">--</span>
-              <span v-else>❇❇</span>
+              <span v-else>--</span>
             </span>
           </div>
           <div v-if="isHoldingDrawerOpen" class="header-right">
@@ -533,11 +526,10 @@ onUnmounted(() => {
             🥈<span class="metal-label-text">{{ t('metalSilver') }}</span>
           </span>
           <span class="metal-price">
-            <span v-if="!isCensored && silverPrice !== null">
+            <span v-if="silverPrice !== null">
               {{ formatPrice(silverPrice) }}<small class="unit">{{ priceUnit() }}</small>
             </span>
-            <span v-else-if="!isCensored">--</span>
-            <span v-else>❇❇</span>
+            <span v-else>--</span>
           </span>
         </div>
       </div>
@@ -586,16 +578,10 @@ onUnmounted(() => {
       </div>
 
       <div class="footer-right">
-        <span
-          v-if="fetchError"
-          class="fetch-error-text"
-          :title="t('fetchError')"
-          @click="toastRef?.show(t('fetchError'), 'warn')"
-          >⚠</span
-        >
-        <span class="lock-icon" :title="t('toggleHide')" @click="toggleCensor">{{
-          isCensored ? '🔒' : '🔓'
-        }}</span>
+        <span v-if="fetchError" class="fetch-error-text" @click="toastRef?.show(t('fetchError'), 'warn')">
+          <span class="fetch-error-icon">⚠</span>
+          <span v-if="!isHoldingDrawerOpen" class="fetch-error-msg">{{ t('fetchError') }}</span>
+        </span>
       </div>
     </div>
 
@@ -1004,6 +990,14 @@ onUnmounted(() => {
   color: #e67e22;
   white-space: nowrap;
   animation: breathe 2s ease-in-out infinite;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.fetch-error-msg {
+  font-size: 12px;
 }
 
 @keyframes breathe {
@@ -1022,19 +1016,6 @@ onUnmounted(() => {
   gap: 8px;
   flex: 1;
   justify-content: flex-end;
-}
-
-.lock-icon {
-  font-size: 14px;
-  opacity: 0.6;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.lock-icon:hover {
-  opacity: 1;
-  transform: scale(1.2);
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
 }
 
 .action-group {

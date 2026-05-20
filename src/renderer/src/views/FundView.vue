@@ -37,12 +37,6 @@ const containerRef = ref<HTMLElement | null>(null)
 const fundInputRef = ref<HTMLInputElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
-// 隐私模式
-const isCensored = ref(false)
-const toggleCensor = () => {
-  isCensored.value = !isCensored.value
-}
-
 // --- 组件引用 ---
 const confirmRef = ref<InstanceType<typeof Confirm> | null>(null)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
@@ -69,7 +63,6 @@ const openEditModal = async (
     })
     inputCode.value = ''
     toastRef.value?.show(t('fundAdded'), 'success')
-    nextTick(() => fundInputRef.value?.focus())
   } else {
     const fund = funds.value.find((f) => f.code === result.code)
     if (fund) {
@@ -215,7 +208,9 @@ const addFund = async () => {
   }
 
   // 弹出输入弹窗
-  openEditModal(code, quote?.name || code, quote?.nav || 0, 1000, getTodayStr(), true)
+  await openEditModal(code, quote?.name || code, quote?.nav || 0, 1000, getTodayStr(), true)
+  // 无论确认还是取消，都把焦点恢复到输入框，方便连续输入
+  nextTick(() => fundInputRef.value?.focus())
 }
 
 // 编辑已有基金持仓
@@ -292,17 +287,6 @@ const totalPnl = computed(() => {
     return total + (pnl || 0)
   }, 0)
 })
-
-// 删除不必要的复制盈亏到剪贴板函数
-
-// 复制总盈亏到剪贴板
-const copyTotalPnl = () => {
-  if (isCensored.value) return
-  const text = `${totalPnl.value > 0 ? '+' : ''}${totalPnl.value.toFixed(1)}`
-  navigator.clipboard.writeText(text).then(() => {
-    toastRef.value?.show(t('totalPnlCopied'), 'success')
-  })
-}
 
 // 排序状态
 const sortColumn = ref<string | null>(null)
@@ -510,52 +494,41 @@ onUnmounted(() => {
               :title="quotes[fund.code]?.name || fund.code"
               @click.stop="toggleNameDisplay(fund.code)"
             >
-              <template v-if="!isCensored">
-                <div class="clickable-tag">
-                  <span v-if="!shownCodes.includes(fund.code)">{{
-                    formatName(quotes[fund.code]?.name)
-                  }}</span>
-                  <span v-else>{{ fund.code }}</span>
-                </div>
-              </template>
-              <template v-else><div class="clickable-tag">❇❇</div></template>
+              <div class="clickable-tag">
+                <span v-if="!shownCodes.includes(fund.code)"> {{ formatName(quotes[fund.code]?.name) }}</span>
+                <span v-else>{{ fund.code }}</span>
+              </div>
             </td>
             <td :class="[(quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green']">
-              <template v-if="!isCensored">
-                {{ quotes[fund.code]?.nav?.toFixed(4) || '--' }}
-              </template>
-              <span v-else>❇❇</span>
+              {{ quotes[fund.code]?.nav?.toFixed(4) || '--' }}
             </td>
             <td
               :class="[(calculatePnl(fund) || 0) >= 0 ? 'red' : 'green', 'clickable-cell']"
               :title="t('clickToEdit')"
               @click.stop="editFund(fund)"
             >
-              <div v-if="!isCensored" class="clickable-tag">
+              <div class="clickable-tag">
                 {{ calculatePnl(fund) !== null ? calculatePnl(fund)!.toFixed(1) : '--' }}
               </div>
-              <span v-else>❇❇</span>
             </td>
             <td :class="(quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green'">
-              <span v-if="!isCensored">
+              <span>
                 <span v-if="quotes[fund.code]">
                   {{ quotes[fund.code].dayGrowth > 0 ? '+' : '' }}{{ quotes[fund.code].dayGrowth }}%
                 </span>
                 <span v-else>--</span>
               </span>
-              <span v-else>❇❇</span>
             </td>
             <td :class="(calculateYield(fund) || 0) >= 0 ? 'red' : 'green'">
-              <span v-if="!isCensored">
+              <span>
                 <span v-if="calculateYield(fund) !== null">
                   {{ calculateYield(fund)! > 0 ? '+' : '' }}{{ calculateYield(fund)!.toFixed(2) }}%
                 </span>
                 <span v-else>--</span>
               </span>
-              <span v-else>❇❇</span>
             </td>
             <td class="days-cell">
-              <span v-if="!isCensored">
+              <span>
                 <template v-if="lastColMode === 0">{{ calcHoldingDays(fund) ?? '--' }}</template>
                 <template v-else>{{
                   calculateMarketValue(fund) > 0
@@ -565,7 +538,6 @@ onUnmounted(() => {
                     : '--'
                 }}</template>
               </span>
-              <span v-else>❇❇</span>
             </td>
           </tr>
           <tr v-if="funds.length === 0">
@@ -608,15 +580,10 @@ onUnmounted(() => {
         <span
           :class="['visible-summary', totalPnl > 0 ? 'red' : totalPnl < 0 ? 'green' : 'gray']"
           :title="t('totalPnl')"
-          @click.stop="copyTotalPnl"
         >
           <span class="pnl-label">{{ t('labelTPnl') }}</span>
-          <span v-if="!isCensored">{{ totalPnl > 0 ? '+' : '' }}{{ totalPnl.toFixed(1) }}</span>
-          <span v-else>❇❇</span>
+          <span>{{ totalPnl > 0 ? '+' : '' }}{{ totalPnl.toFixed(1) }}</span>
         </span>
-        <span class="lock-icon" :title="t('toggleHide')" @click="toggleCensor">{{
-          isCensored ? '🔒' : '🔓'
-        }}</span>
       </div>
       <button
         v-if="funds.length > 0"
@@ -977,18 +944,6 @@ onUnmounted(() => {
 .visible-summary:hover {
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 6px;
-}
-
-.lock-icon {
-  font-size: 14px;
-  opacity: 0.6;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-.lock-icon:hover {
-  opacity: 1;
-  transform: scale(1.2);
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
 }
 
 .clear-all-btn {

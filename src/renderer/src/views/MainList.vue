@@ -191,12 +191,6 @@ const displayStocks = computed(() => {
   })
 })
 
-// 隐私模式
-const isCensored = ref(false)
-const toggleCensor = () => {
-  isCensored.value = !isCensored.value
-}
-
 // Name 这一列单行显示代码还是名称展示的追踪列表
 const shownCodes = ref<string[]>([])
 const toggleNameDisplay = (code: string) => {
@@ -257,17 +251,6 @@ const formatName = (name: string | undefined): string => {
     return name.slice(0, 4) + '...'
   }
   return name
-}
-
-// 复制盈亏到剪贴板
-const copyPnl = (type: 'daily' | 'total') => {
-  if (isCensored.value) return
-  const value = type === 'daily' ? totalDailyPnl.value : totalHoldingPnl.value
-  const text = `${value > 0 ? '+' : ''}${value.toFixed(1)}`
-  const label = type === 'daily' ? t('dailyPnlCopied') : t('totalPnlCopied')
-  navigator.clipboard.writeText(text).then(() => {
-    toastRef.value?.show(label, 'success')
-  })
 }
 
 // 加载本地存储
@@ -355,7 +338,7 @@ const addStock = async () => {
   }
 
   if (stocks.value.some((s) => s.code === code)) {
-    alert(t('stockExists'))
+    toastRef.value?.show(t('stockExists'), 'warn')
     return
   }
 
@@ -382,8 +365,9 @@ const addStock = async () => {
     inputCode.value = ''
     fetchQuotes(true)
     toastRef.value?.show(t('stockAdded'), 'success')
-    nextTick(() => stockInputRef.value?.focus())
   }
+  // 无论确认还是取消，都把焦点恢复到输入框，方便连续输入
+  nextTick(() => stockInputRef.value?.focus())
 }
 
 // 单独获取行情（辅助addStock）
@@ -1139,61 +1123,49 @@ onUnmounted(() => {
               :title="quotes[stock.code]?.name || stock.code"
               @click.stop="toggleNameDisplay(stock.code)"
             >
-              <template v-if="!isCensored">
-                <div class="clickable-tag">
-                  <span
-                    v-if="
-                      (nameDisplayMode === 0 && !shownCodes.includes(stock.code)) ||
-                      (nameDisplayMode === 1 && shownCodes.includes(stock.code))
-                    "
-                    >{{ formatName(quotes[stock.code]?.name) }}</span
-                  >
-                  <span v-else>{{ stock.code }}</span>
-                </div>
-              </template>
-              <template v-else>
-                <div class="clickable-tag">❇❇</div>
-              </template>
+              <div class="clickable-tag">
+                <span
+                  v-if="
+                    (nameDisplayMode === 0 && !shownCodes.includes(stock.code)) ||
+                    (nameDisplayMode === 1 && shownCodes.includes(stock.code))
+                  "
+                  >{{ formatName(quotes[stock.code]?.name) }}</span
+                >
+                <span v-else>{{ stock.code }}</span>
+              </div>
             </td>
             <td :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
-              <template v-if="!isCensored">
-                <template v-if="splitChg || priceDisplayMode === 0">
-                  {{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}
-                </template>
-                <template v-else-if="priceDisplayMode === 1">
-                  <span v-if="quotes[stock.code]">
+              <template v-if="splitChg || priceDisplayMode === 0">
+                {{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}
+              </template>
+              <template v-else-if="priceDisplayMode === 1">
+                <span v-if="quotes[stock.code]">
+                  {{ quotes[stock.code].changeAmount > 0 ? '+' : '' }}{{ quotes[stock.code].changePercent }}%
+                </span>
+                <span v-else>--</span>
+              </template>
+              <template v-else>
+                <div class="price-dual">
+                  <span class="price-main">{{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}</span>
+                  <span v-if="quotes[stock.code]" class="price-chg">
                     {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
                     }}{{ quotes[stock.code].changePercent }}%
                   </span>
-                  <span v-else>--</span>
-                </template>
-                <template v-else>
-                  <div class="price-dual">
-                    <span class="price-main">{{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}</span>
-                    <span v-if="quotes[stock.code]" class="price-chg">
-                      {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
-                      }}{{ quotes[stock.code].changePercent }}%
-                    </span>
-                  </div>
-                </template>
+                </div>
               </template>
-              <span v-else>❇❇</span>
             </td>
             <td
               v-if="splitChg"
               class="chg-cell"
               :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
             >
-              <template v-if="!isCensored">
-                <span v-if="quotes[stock.code]">
-                  {{ quotes[stock.code].changeAmount > 0 ? '+' : '' }}{{ quotes[stock.code].changePercent }}%
-                </span>
-                <span v-else>--</span>
-              </template>
-              <span v-else>❇❇</span>
+              <span v-if="quotes[stock.code]">
+                {{ quotes[stock.code].changeAmount > 0 ? '+' : '' }}{{ quotes[stock.code].changePercent }}%
+              </span>
+              <span v-else>--</span>
             </td>
             <td :class="calculateDailyPnl(stock) >= 0 ? 'red' : 'green'">
-              <span v-if="!isCensored">
+              <span>
                 <template v-if="dpnlDisplayMode === 0">{{ calculateDailyPnl(stock).toFixed(1) }}</template>
                 <template v-else-if="dpnlDisplayMode === 1">
                   {{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}
@@ -1205,10 +1177,9 @@ onUnmounted(() => {
                   </div>
                 </template>
               </span>
-              <span v-else>❇❇</span>
             </td>
             <td class="tpnl-cell" :class="(calculateTotalPnl(stock) || 0) >= 0 ? 'red' : 'green'">
-              <span v-if="!isCensored">
+              <span>
                 <template v-if="splitPnl || tpnlDisplayMode === 0">
                   {{ calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(1) : '--' }}
                 </template>
@@ -1224,20 +1195,18 @@ onUnmounted(() => {
                   </div>
                 </template>
               </span>
-              <span v-else>❇❇</span>
             </td>
             <td
               v-if="splitPnl"
               class="tpnl-cell"
               :class="(calculateTotalPnlPercent(stock) || 0) >= 0 ? 'red' : 'green'"
             >
-              <span v-if="!isCensored">
+              <span>
                 {{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}
               </span>
-              <span v-else>❇❇</span>
             </td>
             <td>
-              <span v-if="!isCensored">
+              <span>
                 <template v-if="splitVal || avgDisplayMode === 0">
                   {{ stock.cost?.toFixed(3) }}
                 </template>
@@ -1259,17 +1228,15 @@ onUnmounted(() => {
                   </div>
                 </template>
               </span>
-              <span v-else>❇❇</span>
             </td>
             <td v-if="splitVal">
-              <span v-if="!isCensored">
+              <span>
                 {{
                   calculateMarketValue(stock).toLocaleString(undefined, {
                     maximumFractionDigits: 0
                   })
                 }}
               </span>
-              <span v-else>❇❇</span>
             </td>
             <td
               class="clickable-cell"
@@ -1277,7 +1244,6 @@ onUnmounted(() => {
               @click.stop="qtyDisplayMode === 0 ? adjustStockFlow(stock) : setPriceAlert(stock)"
             >
               <div
-                v-if="!isCensored"
                 class="clickable-tag"
                 :class="{ 'alert-active': qtyDisplayMode === 1 && stock.priceAlerts?.length }"
               >
@@ -1291,7 +1257,6 @@ onUnmounted(() => {
                   <span v-else class="alert-placeholder">➕</span>
                 </template>
               </div>
-              <span v-else>❇❇</span>
             </td>
           </tr>
           <tr v-if="stocks.length === 0">
@@ -1336,24 +1301,17 @@ onUnmounted(() => {
         <span
           :class="['visible-summary', totalDailyPnl > 0 ? 'red' : totalDailyPnl < 0 ? 'green' : 'gray']"
           :title="t('dailyPnlTotal')"
-          @click.stop="copyPnl('daily')"
         >
           <span class="pnl-label">{{ t('labelD') }}</span>
-          <span v-if="!isCensored">{{ totalDailyPnl > 0 ? '+' : '' }}{{ totalDailyPnl.toFixed(1) }}</span>
-          <span v-else>❇❇</span>
+          <span>{{ totalDailyPnl > 0 ? '+' : '' }}{{ totalDailyPnl.toFixed(1) }}</span>
         </span>
         <span
           :class="['visible-summary', totalHoldingPnl > 0 ? 'red' : totalHoldingPnl < 0 ? 'green' : 'gray']"
           :title="t('holdingPnlTotal')"
-          @click.stop="copyPnl('total')"
         >
           <span class="pnl-label">{{ t('labelH') }}</span>
-          <span v-if="!isCensored">{{ totalHoldingPnl > 0 ? '+' : '' }}{{ totalHoldingPnl.toFixed(1) }}</span>
-          <span v-else>❇❇</span>
+          <span>{{ totalHoldingPnl > 0 ? '+' : '' }}{{ totalHoldingPnl.toFixed(1) }}</span>
         </span>
-        <span class="lock-icon" :title="t('toggleHide')" @click="toggleCensor">{{
-          isCensored ? '🔒' : '🔓'
-        }}</span>
       </div>
       <button
         v-if="stocks.length > 0"
@@ -1688,20 +1646,6 @@ onUnmounted(() => {
 
 .green {
   color: var(--ev-c-blue);
-}
-
-.lock-icon {
-  font-size: 14px;
-  opacity: 0.6;
-  transition: all 0.3s ease;
-  margin-left: auto;
-  cursor: pointer;
-}
-
-.lock-icon:hover {
-  opacity: 1;
-  transform: scale(1.2);
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
 }
 
 .clickable-th {
