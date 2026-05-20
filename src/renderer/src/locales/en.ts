@@ -168,6 +168,7 @@ export default {
   valLabel: 'Value',
   gramsLabel: 'Grams',
   avgCostPrice: 'Avg Cost (¥/g)',
+  tradePriceLabel: 'Trade Price (¥/g)',
   goldTotalPnl: 'Total PnL',
   goldMarketValue: 'Market Value',
   goldYieldRate: 'Yield Rate',

@@ -66,7 +66,7 @@ const ballMenuTexts: Record<
     hideBall: '隐藏悬浮球',
     displayLabel: '显示金额',
     modeStock: '股票盈亏',
-    modeGold: '黄金价格',
+    modeGold: '实时金价',
     modeNone: '不显示'
   }
 }

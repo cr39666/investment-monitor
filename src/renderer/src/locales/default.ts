@@ -166,6 +166,7 @@ export default {
   valLabel: '价值',
   gramsLabel: '克数',
   avgCostPrice: '成本均价(¥/g)',
+  tradePriceLabel: '成交价格(¥/g)',
   goldTotalPnl: '总盈亏',
   goldMarketValue: '持仓市值',
   goldYieldRate: '收益率',

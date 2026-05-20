@@ -124,10 +124,18 @@ const toggleCurrency = async () => {
   const nextCurrency: Currency = currency.value === 'CNY' ? 'USD' : 'CNY'
   isSwitchingCurrency.value = true
 
+  // 切换期间暂停轮询，避免轮询请求抢占 displayFetchVersion 导致切换被丢弃
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+
   try {
     await fetchPrices(nextCurrency, true)
   } finally {
     isSwitchingCurrency.value = false
+    // 恢复轮询
+    timer = setInterval(fetchPrices, 10000)
   }
 }
 
@@ -835,6 +843,25 @@ onUnmounted(() => {
 .pnl-toggle-row {
   cursor: pointer;
   position: relative;
+  background-color: rgba(255, 215, 0, 0.06);
+  border-color: rgba(255, 215, 0, 0.18);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.1s ease;
+}
+
+.pnl-toggle-row .holding-label::after {
+  content: '⇅';
+  margin-left: 4px;
+  font-size: 10px;
+  color: rgba(255, 215, 0, 0.7);
+  vertical-align: middle;
+}
+
+.pnl-toggle-row:hover {
+  background-color: rgba(255, 215, 0, 0.1);
+  border-color: rgba(255, 215, 0, 0.32);
 }
 
 .pnl-toggle-row:active {

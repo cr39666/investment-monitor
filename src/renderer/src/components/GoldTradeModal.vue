@@ -177,6 +177,7 @@ const confirm = () => {
               class="modal-input"
               :placeholder="t('enterGrams')"
               step="0.0001"
+              @keydown.enter="confirm"
             />
             <input
               v-else
@@ -186,21 +187,22 @@ const confirm = () => {
               class="modal-input"
               :placeholder="t('enterAmount')"
               step="0.01"
+              @keydown.enter="confirm"
             />
             <label>{{ tradeMode === 'grams' ? t('gramsLabel') : t('valLabel') }}</label>
           </div>
 
-          <!-- Price Input (Avg Cost Price) -->
+          <!-- Price Input (Avg Cost Price for init / Trade Price for buy/sell) -->
           <div class="modal-input-group">
             <input
               v-model="tradePrice"
               type="number"
               class="modal-input"
-              :placeholder="t('avgCostPrice')"
+              :placeholder="mode === 'init' ? t('avgCostPrice') : t('tradePriceLabel')"
               step="0.01"
               @keydown.enter="confirm"
             />
-            <label>{{ t('avgCostPrice') }}</label>
+            <label>{{ mode === 'init' ? t('avgCostPrice') : t('tradePriceLabel') }}</label>
 
             <!-- Real-time Hint based on Price Input (Hidden in init mode) -->
             <div v-if="mode !== 'init' && calculationResult" class="inline-hint">
