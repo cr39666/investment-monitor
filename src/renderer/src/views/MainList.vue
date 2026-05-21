@@ -17,8 +17,14 @@ interface StockItem {
   isNew?: boolean // 是否为新添加（用于初始化默认成本）
   priceAlerts?: PriceAlert[] // 价格提醒列表
   realizedPnl?: number // 已实现盈亏（减仓/清仓时累计，永久）
+  // 累计买入成本（含买入手续费，单位分）：建仓初始化、加仓累加、减仓不动；总盈亏比分母
+  totalCostBasis?: number
   dailyRealizedPnl?: number // 当日已实现盈亏（调仓时累计，每日清零）
   dailyDate?: string // 记录 dailyRealizedPnl 对应的日期，用于自动清零
+  // 当日已实现部分对应的昨日基准市值（昨收 × 卖出股数 × 100），用于计算日盈亏比；每日清零
+  // 仅减仓/清仓时累计；分母 = 持仓部分昨日市值 + 已卖出部分昨日基准市值，
+  // 这样清仓后 amount=0 也能算出正确的日盈亏比
+  dailyBasis?: number
 }
 
 // 价格提醒
@@ -35,6 +41,7 @@ interface StockQuote {
   yesterdayClose: number // 昨收价
   changeAmount: number // 涨跌额
   changePercent: number // 涨跌幅
+  quoteDate?: string // 行情写入时的本地日期(YYYY-MM-DD)，用于跨日识别陈旧昨收
 }
 
 const inputCode = ref('')
@@ -125,9 +132,13 @@ const displayStocks = computed(() => {
           break
         case 'dpnl':
           valA =
-            dpnlDisplayMode.value === 1 ? (calculateDailyPnlPercent(a) ?? -999999999) : calculateDailyPnl(a)
+            dpnlDisplayMode.value === 1
+              ? (calculateDailyPnlPercent(a) ?? -999999999)
+              : (calculateDailyPnl(a) ?? -999999999)
           valB =
-            dpnlDisplayMode.value === 1 ? (calculateDailyPnlPercent(b) ?? -999999999) : calculateDailyPnl(b)
+            dpnlDisplayMode.value === 1
+              ? (calculateDailyPnlPercent(b) ?? -999999999)
+              : (calculateDailyPnl(b) ?? -999999999)
           break
         case 'tpnl':
           valA =
@@ -249,6 +260,12 @@ const loadStocks = () => {
   if (saved) {
     try {
       stocks.value = JSON.parse(saved)
+      // 兼容老数据：缺失 totalCostBasis 时按"当前持仓成本市值"近似初始化
+      stocks.value.forEach((s) => {
+        if (s.totalCostBasis === undefined && s.cost > 0 && s.amount > 0) {
+          s.totalCostBasis = s.cost * s.amount * 100
+        }
+      })
     } catch (e) {
       console.error('Failed to parse saved stocks', e)
     }
@@ -290,15 +307,19 @@ const getTodayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// 清零过期的当日已实现盈亏（跨日自动清零）
+// 跨日清零当日字段（dailyRealizedPnl / dailyBasis / dailyDate 同生命周期）
 const resetDailyRealizedPnl = () => {
   const today = getTodayStr()
   let changed = false
   stocks.value.forEach((stock) => {
-    if (stock.dailyDate !== today && stock.dailyRealizedPnl) {
-      stock.dailyRealizedPnl = 0
-      stock.dailyDate = today
-      changed = true
+    if (stock.dailyDate !== today) {
+      // 有残留值或日期错位才写入，避免无意义保存
+      if (stock.dailyRealizedPnl || stock.dailyBasis || stock.dailyDate) {
+        stock.dailyRealizedPnl = 0
+        stock.dailyBasis = 0
+        stock.dailyDate = today
+        changed = true
+      }
     }
   })
   if (changed) saveStocks()
@@ -349,7 +370,9 @@ const addStock = async () => {
       cost: res.price,
       amount: res.amount,
       buyDate: res.isTodayNewPosition ? today : undefined,
-      isNew: false
+      isNew: false,
+      // 建仓无买入手续费概念，cost 即用户填的均价
+      totalCostBasis: res.price * res.amount * 100
     })
     saveStocks()
     inputCode.value = ''
@@ -390,7 +413,8 @@ const fetchQuotesByCode = (code: string): Promise<void> => {
             currentPrice: parseFloat(parts[3]),
             yesterdayClose: parseFloat(parts[4]),
             changeAmount: parseFloat(parts[31]),
-            changePercent: parseFloat(parts[32])
+            changePercent: parseFloat(parts[32]),
+            quoteDate: getTodayStr()
           }
         }
       }
@@ -537,15 +561,20 @@ const adjustStockFlow = async (stock: StockItem) => {
     // 确保 dailyRealizedPnl 属于今天
     if (stock.dailyDate !== today) {
       stock.dailyRealizedPnl = 0
+      stock.dailyBasis = 0
       stock.dailyDate = today
     }
 
     if (delta > 0) {
       // 加仓：计算加权平均成本（含买入手续费）
       const buyFee = calcTradeFee(tradePrice, delta, 'buy')
+      // 旧数据无 totalCostBasis 时按加仓前的持仓成本市值兜底
+      const prevBasis = stock.totalCostBasis ?? stock.cost * stock.amount * 100
       const oldTotalVal = stock.amount * stock.cost
       const addTotalVal = delta * tradePrice + buyFee // 手续费计入买入成本
       stock.cost = Number(((oldTotalVal + addTotalVal) / newAmount).toFixed(3))
+
+      stock.totalCostBasis = prevBasis + delta * tradePrice * 100 + buyFee
 
       // 当日盈亏修正：仅非新建仓的当日操作才修正
       // 新建仓(buyDate===today)的成本已含手续费，当日盈亏=(现价-成本)×股数，无需额外修正
@@ -564,6 +593,9 @@ const adjustStockFlow = async (stock: StockItem) => {
       if (isTodayTrade && yesterdayClose > 0) {
         stock.dailyRealizedPnl =
           (stock.dailyRealizedPnl || 0) + (tradePrice - yesterdayClose) * soldLots * 100 - sellFee
+        // 累加卖出部分对应的"昨日基准市值"，用于日盈亏比的分母
+        // 这样清仓后 amount=0 时仍可用 dailyBasis 算比例
+        stock.dailyBasis = (stock.dailyBasis || 0) + yesterdayClose * soldLots * 100
       }
     }
 
@@ -641,7 +673,8 @@ const fetchQuotes = (force = false) => {
             currentPrice,
             yesterdayClose: parseFloat(parts[4]),
             changeAmount: parseFloat(parts[31]),
-            changePercent: parseFloat(parts[32])
+            changePercent: parseFloat(parts[32]),
+            quoteDate: getTodayStr()
           }
 
           // 如果是新添加的股票，且成功获取到价格，则将成本价初始化为当前价
@@ -678,20 +711,22 @@ const syncWindowSize = () => {
 }
 
 // 计算某只股票的当日盈亏
-// 如果今天买入：(现价 - 买入价) × 股数
-// 如果之前买入：(现价 - 昨收) × 股数 + 当日已实现盈亏修正
-const calculateDailyPnl = (stock: StockItem): number => {
+// 今天买入：(现价 - 买入价) × 股数
+// 之前买入：(现价 - 昨收) × 股数 + 当日已实现盈亏修正
+// 跨日陈旧昨收（quoteDate !== today）返回 null，避免不重启跨零点后显示"昨天的日盈"
+const calculateDailyPnl = (stock: StockItem): number | null => {
   const quote = quotes.value[stock.code]
-  if (!quote) return 0
+  if (!quote) return null
 
   const today = getTodayStr()
 
-  // 如果今天买入，当日盈亏 = (现价 - 买入价) × 股数
+  // 行情陈旧（跨日未刷新）→ 昨收过期
+  if (quote.quoteDate && quote.quoteDate !== today) return null
+
   if (stock.buyDate === today) {
     return (quote.currentPrice - stock.cost) * stock.amount * 100
   }
 
-  // 如果之前买入，当日盈亏 = (现价 - 昨收) × 股数 + 当日已实现盈亏修正
   const dailyCorrection = (stock.dailyDate === today ? stock.dailyRealizedPnl : 0) || 0
   return (quote.currentPrice - quote.yesterdayClose) * stock.amount * 100 + dailyCorrection
 }
@@ -717,41 +752,55 @@ const calculateMarketValue = (stock: StockItem): number => {
 // 当日盈亏额 / 昨日市值(或买入市值) × 100
 const calculateDailyPnlPercent = (stock: StockItem): number | null => {
   const quote = quotes.value[stock.code]
-  if (!quote || stock.amount <= 0) return null
+  if (!quote) return null
 
   const today = getTodayStr()
   const dailyPnl = calculateDailyPnl(stock)
+  if (dailyPnl === null) return null
+  // 当日已卖出部分的昨日基准市值（清仓后用它做分母）
+  const soldBasis = (stock.dailyDate === today ? stock.dailyBasis : 0) || 0
 
-  // 如果今天买入，基准为买入成本市值
+  // 如果今天买入，基准为买入成本市值 + 当日已卖出部分昨日基准
   if (stock.buyDate === today) {
     const costValue = stock.cost * stock.amount * 100
-    if (costValue <= 0) return null
-    return (dailyPnl / costValue) * 100
+    const denom = costValue + soldBasis
+    if (denom <= 0) return null
+    return (dailyPnl / denom) * 100
   }
 
-  // 如果之前买入，基准为昨收市值
+  // 否则基准 = 持仓部分昨日市值 + 当日已卖出部分昨日基准
+  // 这样清仓后 amount=0 时仍可正常计算比例
   const yesterdayValue = quote.yesterdayClose * stock.amount * 100
-  if (yesterdayValue <= 0) return null
-  return (dailyPnl / yesterdayValue) * 100
+  const denom = yesterdayValue + soldBasis
+  if (denom <= 0) return null
+  return (dailyPnl / denom) * 100
 }
 
 // 计算某只股票的总盈亏比(%)
-// 总盈亏额 / 总投入成本 × 100
+// 总盈亏额 / 累计买入成本 × 100
+// 分母必须用 totalCostBasis（累计买入成本），不能用 cost×amount×100；
+// 否则减仓/清仓后分母变小（甚至为 0），比例被放大、清仓后显示 --
 const calculateTotalPnlPercent = (stock: StockItem): number | null => {
   const quote = quotes.value[stock.code]
-  if (!quote || stock.cost <= 0) return null
+  if (!quote) return null
 
   const totalPnl = calculateTotalPnl(stock)
   if (totalPnl === null) return null
 
-  const totalCost = stock.cost * stock.amount * 100
-  if (totalCost <= 0) return null
-  return (totalPnl / totalCost) * 100
+  // 旧数据缺 totalCostBasis 时退回 cost×amount×100
+  const basis =
+    stock.totalCostBasis && stock.totalCostBasis > 0
+      ? stock.totalCostBasis
+      : stock.cost > 0
+        ? stock.cost * stock.amount * 100
+        : 0
+  if (basis <= 0) return null
+  return (totalPnl / basis) * 100
 }
 
 // 总当日盈亏额
 const totalDailyPnl = computed(() => {
-  return stocks.value.reduce((total, stock) => total + calculateDailyPnl(stock), 0)
+  return stocks.value.reduce((total, stock) => total + (calculateDailyPnl(stock) ?? 0), 0)
 })
 
 // 格式化盈亏比显示
@@ -1151,15 +1200,19 @@ onUnmounted(() => {
               </span>
               <span v-else>--</span>
             </td>
-            <td :class="calculateDailyPnl(stock) >= 0 ? 'red' : 'green'">
+            <td :class="(calculateDailyPnl(stock) ?? 0) >= 0 ? 'red' : 'green'">
               <span>
-                <template v-if="dpnlDisplayMode === 0">{{ calculateDailyPnl(stock).toFixed(2) }}</template>
+                <template v-if="dpnlDisplayMode === 0">
+                  {{ calculateDailyPnl(stock) !== null ? calculateDailyPnl(stock)!.toFixed(2) : '--' }}
+                </template>
                 <template v-else-if="dpnlDisplayMode === 1">
                   {{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}
                 </template>
                 <template v-else>
                   <div class="price-dual">
-                    <span class="price-main">{{ calculateDailyPnl(stock).toFixed(2) }}</span>
+                    <span class="price-main">
+                      {{ calculateDailyPnl(stock) !== null ? calculateDailyPnl(stock)!.toFixed(2) : '--' }}
+                    </span>
                     <span class="price-chg">{{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}</span>
                   </div>
                 </template>
