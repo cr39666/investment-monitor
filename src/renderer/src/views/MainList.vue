@@ -41,7 +41,7 @@ const inputCode = ref('')
 const stocks = ref<StockItem[]>([])
 // 以 code 为 key 保存行情数据
 const quotes = ref<Record<string, StockQuote>>({})
-let timer: ReturnType<typeof setInterval> | null = null
+let timer: ReturnType<typeof setTimeout> | null = null
 
 const containerRef = ref<HTMLElement | null>(null)
 const stockInputRef = ref<HTMLInputElement | null>(null)
@@ -370,6 +370,15 @@ const fetchQuotesByCode = (code: string): Promise<void> => {
     script.id = scriptId
     script.charset = 'gbk'
     script.src = `http://qt.gtimg.cn/q=${code}&t=${Date.now()}`
+    const cleanup = () => {
+      // 释放腾讯接口注入的全局变量，避免常驻 window
+      try {
+        delete (window as unknown as Record<string, unknown>)[`v_${code}`]
+      } catch {
+        ;(window as unknown as Record<string, unknown>)[`v_${code}`] = undefined
+      }
+      if (script.parentNode) document.body.removeChild(script)
+    }
     script.onload = () => {
       const varName = `v_${code}`
       const dataStr = (window as unknown as Record<string, unknown>)[varName] as string | undefined
@@ -385,7 +394,11 @@ const fetchQuotesByCode = (code: string): Promise<void> => {
           }
         }
       }
-      document.body.removeChild(script!)
+      cleanup()
+      resolve()
+    }
+    script.onerror = () => {
+      cleanup()
       resolve()
     }
     document.body.appendChild(script)
@@ -603,6 +616,17 @@ const fetchQuotes = (force = false) => {
   script.src = `http://qt.gtimg.cn/q=${codes}&t=${Date.now()}`
 
   // 监听脚本加载完成
+  const stockCodes = stocks.value.map((s) => s.code)
+  const cleanupGlobals = () => {
+    // 释放腾讯接口注入到 window 的 v_xxx 全局变量
+    stockCodes.forEach((code) => {
+      try {
+        delete (window as unknown as Record<string, unknown>)[`v_${code}`]
+      } catch {
+        ;(window as unknown as Record<string, unknown>)[`v_${code}`] = undefined
+      }
+    })
+  }
   script.onload = () => {
     stocks.value.forEach((stock) => {
       // 腾讯接口会在全局注入形如 v_sh600519 的变量
@@ -634,6 +658,10 @@ const fetchQuotes = (force = false) => {
     })
     // 缓存行情数据
     cacheQuotes()
+    cleanupGlobals()
+  }
+  script.onerror = () => {
+    cleanupGlobals()
   }
 
   document.body.appendChild(script)
@@ -879,7 +907,20 @@ onMounted(async () => {
   }
 
   fetchQuotes(true) // 初始强制获取一次，不论是否在交易时间
-  timer = setInterval(() => fetchQuotes(false), 1000)
+  // 用链式 setTimeout 取代 setInterval：
+  //   1. 上一轮请求完成后再触发下一轮，避免弱网时请求堆积
+  //   2. 窗口不可见时拉长间隔到 10s，降低后台 CPU/内存占用
+  const scheduleNext = () => {
+    const delay = document.visibilityState === 'visible' ? 1000 : 10000
+    timer = setTimeout(() => {
+      try {
+        fetchQuotes(false)
+      } finally {
+        scheduleNext()
+      }
+    }, delay)
+  }
+  scheduleNext()
 
   // 等待 Vue DOM 更新完毕后再测量，避免拿到未渲染完成的尺寸
   await nextTick()
@@ -900,7 +941,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
+  if (timer) clearTimeout(timer)
   if (resizeObserver) resizeObserver.disconnect()
 })
 </script>

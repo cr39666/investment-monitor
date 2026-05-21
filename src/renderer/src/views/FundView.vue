@@ -27,7 +27,9 @@ interface FundQuote {
 const inputCode = ref('')
 const funds = ref<FundItem[]>([])
 const quotes = ref<Record<string, FundQuote>>({})
-let timer: ReturnType<typeof setInterval> | null = null
+let timer: ReturnType<typeof setTimeout> | null = null
+// 是否已被卸载（用于阻止飞行中的 JSONP 回调把数据写回已销毁的组件）
+let isUnmounted = false
 
 const containerRef = ref<HTMLElement | null>(null)
 const fundInputRef = ref<HTMLInputElement | null>(null)
@@ -136,6 +138,11 @@ const fetchFundByCode = (code: string): Promise<FundQuote | null> => {
     let apiIndex = 0
 
     const tryFetch = () => {
+      // 组件已卸载则直接终止，避免后续请求飞回写入孤立闭包
+      if (isUnmounted) {
+        resolve(null)
+        return
+      }
       if (apiIndex >= FUND_APIS.length) {
         resolve(null)
         return
@@ -179,8 +186,9 @@ const fetchAllQuotes = async (force = false) => {
   if (!force && !isTradingTime()) return
 
   for (const fund of funds.value) {
+    if (isUnmounted) return
     const result = await fetchFundByCode(fund.code)
-    if (result) quotes.value[fund.code] = result
+    if (result && !isUnmounted) quotes.value[fund.code] = result
   }
 }
 
@@ -355,7 +363,19 @@ const syncWindowSize = () => {
 onMounted(async () => {
   loadFunds()
   fetchAllQuotes(true)
-  timer = setInterval(() => fetchAllQuotes(false), 3000)
+  // 链式 setTimeout 取代 setInterval：上一轮跑完才发起下一轮，避免请求堆积；
+  // 不可见时降速到 30s（基金净值变更频率本来就低），降低后台占用
+  const scheduleNext = () => {
+    const delay = document.visibilityState === 'visible' ? 3000 : 30000
+    timer = setTimeout(async () => {
+      try {
+        await fetchAllQuotes(false)
+      } finally {
+        if (!isUnmounted) scheduleNext()
+      }
+    }, delay)
+  }
+  scheduleNext()
 
   await nextTick()
 
@@ -370,8 +390,16 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
+  isUnmounted = true
+  if (timer) clearTimeout(timer)
   if (resizeObserver) resizeObserver.disconnect()
+  // 清理可能仍挂在 window 上的 JSONP 回调与悬挂 <script>
+  try {
+    delete (window as any).jsonpgz
+  } catch {
+    ;(window as any).jsonpgz = undefined
+  }
+  document.querySelectorAll('script[id^="fund-script-"]').forEach((el) => el.parentNode?.removeChild(el))
 })
 </script>
 

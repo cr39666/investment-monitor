@@ -40,7 +40,7 @@ const goldPrice = ref(loadBallGoldCache())
 const ballDisplayMode = ref('stock')
 const isHovered = ref(false)
 const isContextMenuOpen = ref(false)
-let pnlTimer: ReturnType<typeof setInterval> | null = null
+let pnlTimer: ReturnType<typeof setTimeout> | null = null
 let goldTimer: ReturnType<typeof setInterval> | null = null
 
 const getTodayStr = () => {
@@ -100,6 +100,7 @@ const fetchAndRefreshPnl = () => {
   }
 
   const codes = stocks.map((s) => s.code).join(',')
+  const codeList = stocks.map((s) => s.code)
   const scriptId = 'ball-jsonp-script'
   let script = document.getElementById(scriptId) as HTMLScriptElement
   if (script) document.body.removeChild(script)
@@ -108,6 +109,17 @@ const fetchAndRefreshPnl = () => {
   script.id = scriptId
   script.charset = 'gbk'
   script.src = `http://qt.gtimg.cn/q=${codes}&t=${Date.now()}`
+
+  const cleanupGlobals = () => {
+    // 释放腾讯接口注入到 window 的 v_xxx 全局变量，避免常驻
+    codeList.forEach((c) => {
+      try {
+        delete (window as unknown as Record<string, unknown>)[`v_${c}`]
+      } catch {
+        ;(window as unknown as Record<string, unknown>)[`v_${c}`] = undefined
+      }
+    })
+  }
 
   script.onload = () => {
     const cachedRaw = localStorage.getItem('cached_quotes')
@@ -130,9 +142,11 @@ const fetchAndRefreshPnl = () => {
     localStorage.setItem('cached_quotes', JSON.stringify(cached))
     localStorage.setItem('cached_quotes_date', today)
     calcPnl(stocks, cached)
+    cleanupGlobals()
   }
 
   script.onerror = () => {
+    cleanupGlobals()
     calcPnlFromCache(stocks)
   }
 
@@ -255,7 +269,18 @@ onMounted(() => {
 
   // 初始化显示模式并启动相应的定时器
   fetchAndRefreshPnl()
-  pnlTimer = setInterval(fetchAndRefreshPnl, 1000)
+  // 链式 setTimeout：可见时 1s 一次，不可见时降速到 10s，避免后台高频轮询
+  const schedulePnl = () => {
+    const delay = document.visibilityState === 'visible' ? 1000 : 10000
+    pnlTimer = setTimeout(() => {
+      try {
+        fetchAndRefreshPnl()
+      } finally {
+        schedulePnl()
+      }
+    }, delay)
+  }
+  schedulePnl()
 
   // 如果初始模式是金价，先从 GoldView 缓存恢复再发请求
   if (ballDisplayMode.value === 'gold') {
@@ -313,8 +338,15 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (pnlTimer) clearInterval(pnlTimer)
+  if (pnlTimer) clearTimeout(pnlTimer)
   if (goldTimer) clearInterval(goldTimer)
+  // 防御性兜底：拖拽中切路由时仍能清理 document 监听与 rAF
+  document.removeEventListener('mousemove', onMouseMove)
+  document.removeEventListener('mouseup', stopDragging)
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
   window.electron.ipcRenderer.removeAllListeners('set-ball-display-mode')
   window.electron.ipcRenderer.removeAllListeners('ball-context-menu-closed')
 })

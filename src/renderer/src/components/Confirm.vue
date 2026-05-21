@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -47,6 +47,16 @@ const handleCancel = () => {
   close()
   resolvePromise?.(false)
 }
+
+// 兜底：组件卸载时（例如父级路由切换且弹窗未关闭），
+// 移除全局 keydown 监听并 resolve 永挂的 promise，避免闭包泄漏
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown, true)
+  if (resolvePromise) {
+    resolvePromise(false)
+    resolvePromise = null
+  }
+})
 
 defineExpose({ open })
 </script>

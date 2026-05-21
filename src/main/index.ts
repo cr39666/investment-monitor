@@ -24,6 +24,8 @@ let windowAlwaysOnTop = false
 let currentLang: string = 'default'
 // 展开前保存悬浮球位置，切回时恢复
 let ballPosition: { x: number; y: number } | null = null
+// 自动更新周期检查定时器（窗口关闭时清理，避免 macOS 重建窗口时累积）
+let updateCheckTimer: ReturnType<typeof setInterval> | null = null
 
 // 托盘菜单多语言文本
 const trayTexts: Record<string, { openMonitor: string; openBall: string; quit: string; tooltip: string }> = {
@@ -205,14 +207,23 @@ function createWindow(): void {
 
     // 启动后延迟自动检查更新并启动周期性检查
     if (app.isPackaged) {
-      setTimeout(() => {
+      const initTimer = setTimeout(() => {
         // 初始检查
         autoUpdater.checkForUpdates()
         // 之后每 2 小时静默检查一次新版本 (1000 * 60 * 60 * 2)
-        setInterval(() => {
+        updateCheckTimer = setInterval(() => {
           autoUpdater.checkForUpdates()
         }, 7200000)
       }, 2000)
+      // 将首次延迟 timer 也挂在 mainWindow 上，window 关闭前如果还没触发，
+      // 一并清理；避免后续 createWindow 重建时旧 timer 仍在跑
+      mainWindow?.once('closed', () => {
+        clearTimeout(initTimer)
+        if (updateCheckTimer) {
+          clearInterval(updateCheckTimer)
+          updateCheckTimer = null
+        }
+      })
     }
   })
 

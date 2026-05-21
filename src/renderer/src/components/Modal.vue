@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, computed } from 'vue'
+import { ref, nextTick, computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -163,6 +163,19 @@ const handleCancel = () => {
   closeModal()
   resolvePromise?.({ confirmed: false })
 }
+
+// 兜底：组件卸载时清理全局 keydown 监听、shake 定时器，并 resolve 未结束的 promise
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown, true)
+  if (shakeTimer) {
+    clearTimeout(shakeTimer)
+    shakeTimer = null
+  }
+  if (resolvePromise) {
+    resolvePromise({ confirmed: false })
+    resolvePromise = null
+  }
+})
 
 defineExpose({ open })
 </script>
