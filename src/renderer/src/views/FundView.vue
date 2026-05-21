@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import DragHandle from '../components/DragHandle.vue'
+import ModuleNavBar from '../components/ModuleNavBar.vue'
 import Confirm from '../components/Confirm.vue'
 import Toast from '../components/Toast.vue'
 import FundEditModal from '../components/FundEditModal.vue'
-import { useUpdateCheck } from '../composables/useUpdateCheck'
 
 const { t } = useI18n()
-const router = useRouter()
-const { hasPendingUpdate, checkPendingUpdate } = useUpdateCheck()
 
 // 基金数据模型
 interface FundItem {
@@ -356,52 +352,7 @@ const syncWindowSize = () => {
   window.electron.ipcRenderer.send('resize-window', width, height)
 }
 
-// 导航
-const goBack = () => {
-  window.electron.ipcRenderer.send('resize-window', 60, 60)
-  router.push('/ball')
-}
-
-const goToSetting = () => {
-  router.push('/setting')
-}
-
-const goToStock = () => {
-  router.push('/')
-}
-
-const goToGold = () => {
-  router.push('/gold')
-}
-
-// 显示导航模块
-const visibleModules = ref<string[]>(['stock', 'gold', 'fund'])
-
 onMounted(async () => {
-  // 检测更新状态
-  checkPendingUpdate()
-
-  // 加载显示模块导航配置
-  const moduleSaved = localStorage.getItem('show_modules')
-  if (moduleSaved !== null) {
-    try {
-      const parsed = JSON.parse(moduleSaved)
-      if (Array.isArray(parsed)) {
-        visibleModules.value = parsed
-      } else if (typeof parsed === 'boolean') {
-        visibleModules.value = parsed ? ['stock', 'gold', 'fund'] : []
-      }
-    } catch {
-      /* ignore */
-    }
-  } else {
-    const fundSaved = localStorage.getItem('show_fund')
-    if (fundSaved !== null) {
-      const parsed = JSON.parse(fundSaved)
-      visibleModules.value = parsed ? ['stock', 'gold', 'fund'] : []
-    }
-  }
-
   loadFunds()
   fetchAllQuotes(true)
   timer = setInterval(() => fetchAllQuotes(false), 3000)
@@ -426,18 +377,7 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="fund-container">
-    <DragHandle>
-      <template #left>
-        <button class="nav-btn" :title="t('backToBall')" @click="goBack">
-          <img src="../assets/icon.svg" class="nav-icon" alt="ball" />
-        </button>
-      </template>
-      <template #right>
-        <button class="nav-btn setting-btn" :title="t('goToSetting')" @click="goToSetting">
-          ⚙️<span v-if="hasPendingUpdate" class="update-dot"></span>
-        </button>
-      </template>
-    </DragHandle>
+    <ModuleNavBar current="fund" />
 
     <div class="table-container">
       <table class="fund-table">
@@ -549,22 +489,6 @@ onUnmounted(() => {
 
     <div class="summary-section">
       <div class="bottom-actions">
-        <button
-          v-if="visibleModules.includes('stock')"
-          class="mode-btn stock-btn"
-          :title="t('switchToStock')"
-          @click="goToStock"
-        >
-          <span class="mode-icon">📈</span>
-        </button>
-        <button
-          v-if="visibleModules.includes('gold')"
-          class="mode-btn gold-btn"
-          :title="t('switchToGold')"
-          @click="goToGold"
-        >
-          <span class="mode-icon">🟨</span>
-        </button>
         <div class="input-group">
           <input
             ref="fundInputRef"
@@ -574,6 +498,14 @@ onUnmounted(() => {
             @keyup.enter="addFund"
           />
           <button class="add-btn" @click="addFund"><span class="add-icon">➕</span></button>
+          <button
+            v-if="funds.length > 0"
+            class="clear-all-btn"
+            :title="selectedCodes.length > 0 ? t('deleteSelected') : t('clearAll')"
+            @click="handleDeleteAction"
+          >
+            <span class="clear-all-icon">{{ selectedCodes.length > 0 ? '🗑️' : '🧹' }}</span>
+          </button>
         </div>
       </div>
       <div class="summary-pnl">
@@ -585,14 +517,6 @@ onUnmounted(() => {
           <span>{{ totalPnl > 0 ? '+' : '' }}{{ totalPnl.toFixed(1) }}</span>
         </span>
       </div>
-      <button
-        v-if="funds.length > 0"
-        class="clear-all-btn"
-        :title="selectedCodes.length > 0 ? t('deleteSelected') : t('clearAll')"
-        @click="handleDeleteAction"
-      >
-        <span class="clear-all-icon">{{ selectedCodes.length > 0 ? '🗑️' : '🧹' }}</span>
-      </button>
     </div>
 
     <Confirm ref="confirmRef" />
@@ -604,7 +528,7 @@ onUnmounted(() => {
 <style scoped>
 .fund-container {
   margin: 20px;
-  padding: 4px 10px 10px 10px;
+  padding: 4px 6px 6px;
   color: #fff;
   min-height: 100px;
   box-sizing: border-box;
@@ -616,61 +540,6 @@ onUnmounted(() => {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   background-clip: padding-box;
-}
-
-.nav-btn {
-  background: none;
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 2px;
-  opacity: 0.6;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.nav-btn:hover {
-  opacity: 1;
-  transform: scale(1.15);
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
-}
-.nav-btn:active {
-  transform: scale(1.05);
-}
-
-.setting-btn {
-  position: relative;
-}
-
-.update-dot {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 4px;
-  height: 4px;
-  background-color: #2ecc71;
-  border-radius: 50%;
-  animation: dotPulse 2s ease-in-out infinite;
-}
-
-@keyframes dotPulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.3);
-  }
-}
-
-.nav-icon {
-  width: 16px;
-  height: 16px;
-  filter: brightness(1.3);
-  transition: filter 0.3s ease;
 }
 
 .table-container {
@@ -916,34 +785,32 @@ onUnmounted(() => {
 }
 
 .summary-pnl {
-  background-color: rgba(255, 255, 255, 0.05);
-  flex: 1;
-  display: flex;
-  gap: 6px;
+  flex: 0 0 auto;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  margin-left: 8px;
-  padding: 1px 6px;
+  gap: 4px;
+  margin-left: auto;
+  padding: 5px 8px;
   border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.05);
   transition: background-color 0.2s;
+}
+.summary-pnl:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 .pnl-label {
   font-size: 10px;
   opacity: 0.6;
-  margin-right: 2px;
+  margin-right: 4px;
+  letter-spacing: 0.5px;
 }
 .visible-summary {
   user-select: none;
-  display: flex;
-  align-items: center;
+  display: inline-flex;
+  align-items: baseline;
   font-size: 13px;
-  padding: 0 4px;
-  margin-right: auto;
-  cursor: pointer;
-}
-.visible-summary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .clear-all-btn {

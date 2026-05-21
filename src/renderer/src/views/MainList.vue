@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import DragHandle from '../components/DragHandle.vue'
+import ModuleNavBar from '../components/ModuleNavBar.vue'
 import Modal from '../components/Modal.vue'
 import Confirm from '../components/Confirm.vue'
 import Toast from '../components/Toast.vue'
-import { useUpdateCheck } from '../composables/useUpdateCheck'
 
 const { t } = useI18n()
-const router = useRouter()
-const { hasPendingUpdate, checkPendingUpdate } = useUpdateCheck()
 
 // 股票数据模型
 interface StockItem {
@@ -50,19 +46,6 @@ let timer: ReturnType<typeof setInterval> | null = null
 const containerRef = ref<HTMLElement | null>(null)
 const stockInputRef = ref<HTMLInputElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
-
-// 前往黄金页面
-const goToGold = (): void => {
-  router.push('/gold')
-}
-
-// 前往基金页面
-const goToFund = (): void => {
-  router.push('/fund')
-}
-
-// 显示导航模块
-const visibleModules = ref<string[]>(['stock', 'gold', 'fund'])
 
 // Price 列展示模式：0=现价, 1=涨跌幅, 2=现价/涨跌幅
 const priceDisplayMode = ref(parseInt(localStorage.getItem('stock_priceDisplayMode') || '0'))
@@ -227,6 +210,13 @@ const avgDisplayMode = ref(parseInt(localStorage.getItem('stock_avgDisplayMode')
 const toggleAvgDisplayMode = () => {
   avgDisplayMode.value = (avgDisplayMode.value + 1) % 3
   localStorage.setItem('stock_avgDisplayMode', String(avgDisplayMode.value))
+}
+
+// 右下角合计盈亏展示模式：0=当日合计(D), 1=持仓合计(H)
+const summaryPnlMode = ref(parseInt(localStorage.getItem('stock_summaryPnlMode') || '0'))
+const toggleSummaryPnlMode = () => {
+  summaryPnlMode.value = (summaryPnlMode.value + 1) % 2
+  localStorage.setItem('stock_summaryPnlMode', String(summaryPnlMode.value))
 }
 
 // 选中的行代码（多选）
@@ -868,29 +858,6 @@ onMounted(async () => {
   loadStocks()
   resetDailyRealizedPnl() // 跨日清零当日已实现盈亏
 
-  // 检测更新状态
-  checkPendingUpdate()
-
-  // 加载显示模块导航配置
-  const moduleSaved = localStorage.getItem('show_modules')
-  if (moduleSaved !== null) {
-    try {
-      const parsed = JSON.parse(moduleSaved)
-      if (Array.isArray(parsed)) {
-        visibleModules.value = parsed
-      } else if (typeof parsed === 'boolean') {
-        visibleModules.value = parsed ? ['stock', 'gold', 'fund'] : []
-      }
-    } catch {
-      /* ignore */
-    }
-  } else {
-    const fundSaved = localStorage.getItem('show_fund')
-    if (fundSaved !== null) {
-      const parsed = JSON.parse(fundSaved)
-      visibleModules.value = parsed ? ['stock', 'gold', 'fund'] : []
-    }
-  }
   loadCachedQuotes() // 先加载缓存的行情数据，避免空白
   loadSortState() // 加载排序状态
 
@@ -932,16 +899,6 @@ onMounted(async () => {
   }
 })
 
-const goBack = () => {
-  // 返回时缩小到球大小
-  window.electron.ipcRenderer.send('resize-window', 60, 60)
-  router.push('/ball')
-}
-
-const goToSetting = (): void => {
-  router.push('/setting')
-}
-
 onUnmounted(() => {
   if (timer) clearInterval(timer)
   if (resizeObserver) resizeObserver.disconnect()
@@ -950,18 +907,7 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="main-list-container">
-    <DragHandle>
-      <template #left>
-        <button class="nav-btn" :title="t('backToBall')" @click="goBack">
-          <img src="../assets/icon.svg" class="nav-icon" alt="ball" />
-        </button>
-      </template>
-      <template #right>
-        <button class="nav-btn setting-btn" :title="t('goToSetting')" @click="goToSetting">
-          ⚙️<span v-if="hasPendingUpdate" class="update-dot"></span>
-        </button>
-      </template>
-    </DragHandle>
+    <ModuleNavBar current="stock" />
     <div class="table-container">
       <table class="stock-table">
         <thead>
@@ -1166,13 +1112,13 @@ onUnmounted(() => {
             </td>
             <td :class="calculateDailyPnl(stock) >= 0 ? 'red' : 'green'">
               <span>
-                <template v-if="dpnlDisplayMode === 0">{{ calculateDailyPnl(stock).toFixed(1) }}</template>
+                <template v-if="dpnlDisplayMode === 0">{{ calculateDailyPnl(stock).toFixed(2) }}</template>
                 <template v-else-if="dpnlDisplayMode === 1">
                   {{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}
                 </template>
                 <template v-else>
                   <div class="price-dual">
-                    <span class="price-main">{{ calculateDailyPnl(stock).toFixed(1) }}</span>
+                    <span class="price-main">{{ calculateDailyPnl(stock).toFixed(2) }}</span>
                     <span class="price-chg">{{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}</span>
                   </div>
                 </template>
@@ -1181,7 +1127,7 @@ onUnmounted(() => {
             <td class="tpnl-cell" :class="(calculateTotalPnl(stock) || 0) >= 0 ? 'red' : 'green'">
               <span>
                 <template v-if="splitPnl || tpnlDisplayMode === 0">
-                  {{ calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(1) : '--' }}
+                  {{ calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(2) : '--' }}
                 </template>
                 <template v-else-if="tpnlDisplayMode === 1">
                   {{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}
@@ -1189,7 +1135,7 @@ onUnmounted(() => {
                 <template v-else>
                   <div class="price-dual">
                     <span class="price-main">{{
-                      calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(1) : '--'
+                      calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(2) : '--'
                     }}</span>
                     <span class="price-chg">{{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}</span>
                   </div>
@@ -1270,22 +1216,6 @@ onUnmounted(() => {
 
     <div class="summary-section">
       <div class="bottom-actions">
-        <button
-          v-if="visibleModules.includes('fund')"
-          class="mode-btn fund-btn"
-          :title="t('switchToFund')"
-          @click="goToFund"
-        >
-          <span class="mode-icon">💹</span>
-        </button>
-        <button
-          v-if="visibleModules.includes('gold')"
-          class="mode-btn"
-          :title="t('switchToGold')"
-          @click="goToGold"
-        >
-          <span class="mode-icon">🟨</span>
-        </button>
         <div class="input-group">
           <input
             ref="stockInputRef"
@@ -1295,32 +1225,35 @@ onUnmounted(() => {
             @keyup.enter="addStock"
           />
           <button class="add-btn" @click="addStock"><span class="add-icon">➕</span></button>
+          <button
+            v-if="stocks.length > 0"
+            class="clear-all-btn"
+            :title="selectedCodes.length > 0 ? t('deleteSelected') : t('clearAll')"
+            @click="handleDeleteAction"
+          >
+            <span class="clear-all-icon">{{ selectedCodes.length > 0 ? '🗑️' : '🧹' }}</span>
+          </button>
         </div>
       </div>
-      <div class="summary-pnl">
+      <div class="summary-pnl" :title="t('clickToTogglePnL')" @click="toggleSummaryPnlMode">
+        <span class="pnl-toggle-icon">🔄</span>
         <span
+          v-if="summaryPnlMode === 0"
           :class="['visible-summary', totalDailyPnl > 0 ? 'red' : totalDailyPnl < 0 ? 'green' : 'gray']"
           :title="t('dailyPnlTotal')"
         >
           <span class="pnl-label">{{ t('labelD') }}</span>
-          <span>{{ totalDailyPnl > 0 ? '+' : '' }}{{ totalDailyPnl.toFixed(1) }}</span>
+          <span>{{ totalDailyPnl > 0 ? '+' : '' }}{{ totalDailyPnl.toFixed(2) }}</span>
         </span>
         <span
+          v-else
           :class="['visible-summary', totalHoldingPnl > 0 ? 'red' : totalHoldingPnl < 0 ? 'green' : 'gray']"
           :title="t('holdingPnlTotal')"
         >
           <span class="pnl-label">{{ t('labelH') }}</span>
-          <span>{{ totalHoldingPnl > 0 ? '+' : '' }}{{ totalHoldingPnl.toFixed(1) }}</span>
+          <span>{{ totalHoldingPnl > 0 ? '+' : '' }}{{ totalHoldingPnl.toFixed(2) }}</span>
         </span>
       </div>
-      <button
-        v-if="stocks.length > 0"
-        class="clear-all-btn"
-        :title="selectedCodes.length > 0 ? t('deleteSelected') : t('clearAll')"
-        @click="handleDeleteAction"
-      >
-        <span class="clear-all-icon">{{ selectedCodes.length > 0 ? '🗑️' : '🧹' }}</span>
-      </button>
     </div>
 
     <!-- 暗色自定义模态框组件 -->
@@ -1337,7 +1270,7 @@ onUnmounted(() => {
 <style scoped>
 .main-list-container {
   margin: 20px; /* 留出足够的空间显示阴影 */
-  padding: 4px 10px 10px 10px; /* Top padding 0 for drag handle */
+  padding: 4px 6px 6px;
   color: #fff;
   min-height: 100px;
   box-sizing: border-box;
@@ -1349,63 +1282,6 @@ onUnmounted(() => {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   background-clip: padding-box; /* 确保背景不超出圆角边框 */
-}
-
-.nav-btn {
-  background: none;
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 2px;
-  opacity: 0.6;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-btn:hover {
-  opacity: 1;
-  transform: scale(1.15);
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
-}
-
-.nav-btn:active {
-  transform: scale(1.05);
-}
-
-.setting-btn {
-  position: relative;
-}
-
-.update-dot {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 4px;
-  height: 4px;
-  background-color: #2ecc71;
-  border-radius: 50%;
-  animation: dotPulse 2s ease-in-out infinite;
-}
-
-@keyframes dotPulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.3);
-  }
-}
-
-.nav-icon {
-  width: 16px;
-  height: 16px;
-  filter: brightness(1.3);
-  transition: filter 0.3s ease;
 }
 
 .bottom-actions {
@@ -1748,36 +1624,46 @@ onUnmounted(() => {
 
 /* Summary Section & PNL */
 .summary-pnl {
-  background-color: rgba(255, 255, 255, 0.05);
-  flex: 1;
-  display: flex;
-  gap: 6px;
+  flex: 0 0 auto;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  margin-left: 8px;
-  padding: 1px 6px;
+  gap: 4px;
+  margin-left: auto;
+  padding: 3px 8px;
   border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.05);
   transition: background-color 0.2s;
+  cursor: pointer;
+}
+.summary-pnl:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.pnl-toggle-icon {
+  font-size: 11px;
+  opacity: 0.9;
+  transition:
+    transform 0.3s ease,
+    opacity 0.2s;
+}
+.summary-pnl:hover .pnl-toggle-icon {
+  opacity: 1;
+  transform: rotate(180deg);
 }
 
 .pnl-label {
   font-size: 10px;
   opacity: 0.6;
-  margin-right: 2px;
+  margin-right: 4px;
+  letter-spacing: 0.5px;
 }
 
 .visible-summary {
   user-select: none;
-  display: flex;
-  align-items: center;
+  display: inline-flex;
+  align-items: baseline;
   font-size: 13px;
-  padding: 0 4px;
-}
-
-.visible-summary:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .code-sub {

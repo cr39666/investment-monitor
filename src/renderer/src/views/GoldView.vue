@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import DragHandle from '../components/DragHandle.vue'
+import ModuleNavBar from '../components/ModuleNavBar.vue'
 import Toast from '../components/Toast.vue'
 import GoldTradeModal from '../components/GoldTradeModal.vue'
 import Confirm from '../components/Confirm.vue'
-import { useUpdateCheck } from '../composables/useUpdateCheck'
 
 const { t } = useI18n()
-const router = useRouter()
-const { hasPendingUpdate, checkPendingUpdate } = useUpdateCheck()
 
 interface GoldHolding {
   grams: number
@@ -364,51 +360,7 @@ const syncWindowSize = () => {
   window.electron.ipcRenderer.send('resize-window', width, height)
 }
 
-const goToStockList = () => {
-  router.push('/')
-}
-
-const goToFund = () => {
-  router.push('/fund')
-}
-
-// 显示导航模块
-const visibleModules = ref<string[]>(['stock', 'gold', 'fund'])
-
-const goToBall = () => {
-  window.electron.ipcRenderer.send('resize-window', 60, 60)
-  router.push('/ball')
-}
-
-const goToSetting = () => {
-  router.push('/setting')
-}
-
 onMounted(async () => {
-  // 检测更新状态
-  checkPendingUpdate()
-
-  // 加载显示模块导航配置
-  const moduleSaved = localStorage.getItem('show_modules')
-  if (moduleSaved !== null) {
-    try {
-      const parsed = JSON.parse(moduleSaved)
-      if (Array.isArray(parsed)) {
-        visibleModules.value = parsed
-      } else if (typeof parsed === 'boolean') {
-        visibleModules.value = parsed ? ['stock', 'gold', 'fund'] : []
-      }
-    } catch {
-      /* ignore */
-    }
-  } else {
-    const fundSaved = localStorage.getItem('show_fund')
-    if (fundSaved !== null) {
-      const parsed = JSON.parse(fundSaved)
-      visibleModules.value = parsed ? ['stock', 'gold', 'fund'] : []
-    }
-  }
-
   loadGoldHolding()
   fetchPrices()
   timer = setInterval(fetchPrices, 10000)
@@ -434,18 +386,7 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="gold-container">
-    <DragHandle>
-      <template #left>
-        <button class="nav-btn" :title="t('backToBall')" @click="goToBall">
-          <img src="../assets/icon.svg" class="nav-icon" alt="ball" />
-        </button>
-      </template>
-      <template #right>
-        <button class="nav-btn setting-btn" :title="t('goToSetting')" @click="goToSetting">
-          ⚙️<span v-if="hasPendingUpdate" class="update-dot"></span>
-        </button>
-      </template>
-    </DragHandle>
+    <ModuleNavBar current="gold" />
 
     <div class="gold-content">
       <!-- 黄金卡片 (整合持仓) -->
@@ -538,22 +479,6 @@ onUnmounted(() => {
     <div class="gold-footer">
       <div class="footer-left">
         <button
-          v-if="visibleModules.includes('stock')"
-          class="switch-btn stock-btn"
-          :title="t('switchToStock')"
-          @click="goToStockList"
-        >
-          📈
-        </button>
-        <button
-          v-if="visibleModules.includes('fund')"
-          class="switch-btn fund-btn"
-          :title="t('switchToFund')"
-          @click="goToFund"
-        >
-          💹
-        </button>
-        <button
           class="switch-btn currency-toggle-btn"
           :disabled="isSwitchingCurrency"
           :title="t('toggleCurrency')"
@@ -601,7 +526,7 @@ onUnmounted(() => {
 <style scoped>
 .gold-container {
   margin: 20px;
-  padding: 2px 6px 4px 6px;
+  padding: 2px 6px 6px;
   color: #fff;
   min-width: 280px;
   width: fit-content;
@@ -613,63 +538,6 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
   overflow: hidden;
-}
-
-.nav-btn {
-  background: none;
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 2px;
-  opacity: 0.6;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.nav-btn:hover {
-  opacity: 1;
-  transform: scale(1.15);
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
-}
-
-.nav-btn:active {
-  transform: scale(1.05);
-}
-
-.setting-btn {
-  position: relative;
-}
-
-.update-dot {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 4px;
-  height: 4px;
-  background-color: #2ecc71;
-  border-radius: 50%;
-  animation: dotPulse 2s ease-in-out infinite;
-}
-
-@keyframes dotPulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.3);
-  }
-}
-
-.nav-icon {
-  width: 16px;
-  height: 16px;
-  filter: brightness(1.3);
-  transition: filter 0.3s ease;
 }
 
 .gold-content {
@@ -837,12 +705,26 @@ onUnmounted(() => {
     transform 0.1s ease;
 }
 
+.pnl-toggle-row .holding-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .pnl-toggle-row .holding-label::after {
-  content: '⇅';
-  margin-left: 4px;
+  content: '🔄';
   font-size: 10px;
-  color: rgba(255, 215, 0, 0.7);
-  vertical-align: middle;
+  line-height: 1;
+  opacity: 0.9;
+  display: inline-block;
+  transition:
+    transform 0.3s ease,
+    opacity 0.2s;
+}
+
+.pnl-toggle-row:hover .holding-label::after {
+  opacity: 1;
+  transform: rotate(180deg);
 }
 
 .pnl-toggle-row:hover {
