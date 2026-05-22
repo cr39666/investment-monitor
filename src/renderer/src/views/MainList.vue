@@ -325,6 +325,11 @@ const resetDailyRealizedPnl = () => {
   if (changed) saveStocks()
 }
 
+// 页面从隐藏切回可见时，立即校验一次跨日清零
+const onVisibilityChange = () => {
+  if (document.visibilityState === 'visible') resetDailyRealizedPnl()
+}
+
 // 保存到本地存储
 const saveStocks = () => {
   localStorage.setItem('my_stocks', JSON.stringify(stocks.value))
@@ -959,10 +964,12 @@ onMounted(async () => {
   // 用链式 setTimeout 取代 setInterval：
   //   1. 上一轮请求完成后再触发下一轮，避免弱网时请求堆积
   //   2. 窗口不可见时拉长间隔到 10s，降低后台 CPU/内存占用
+  //   3. 每轮顺手做一次跨日清零校验，避免页面长开过零点不清零
   const scheduleNext = () => {
     const delay = document.visibilityState === 'visible' ? 1000 : 10000
     timer = setTimeout(() => {
       try {
+        resetDailyRealizedPnl() // 跨零点自动清零（无变化时是 no-op）
         fetchQuotes(false)
       } finally {
         scheduleNext()
@@ -970,6 +977,11 @@ onMounted(async () => {
     }, delay)
   }
   scheduleNext()
+
+  // 窗口从隐藏→可见 / 重新获得焦点时，立即校验跨日清零。
+  // 覆盖：电脑休眠唤醒、最小化恢复、切回应用等"轮询暂停过零点"的场景
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('focus', resetDailyRealizedPnl)
 
   // 等待 Vue DOM 更新完毕后再测量，避免拿到未渲染完成的尺寸
   await nextTick()
@@ -992,6 +1004,8 @@ onMounted(async () => {
 onUnmounted(() => {
   if (timer) clearTimeout(timer)
   if (resizeObserver) resizeObserver.disconnect()
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('focus', resetDailyRealizedPnl)
 })
 </script>
 
