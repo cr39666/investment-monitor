@@ -5,6 +5,7 @@ import ModuleNavBar from '../components/ModuleNavBar.vue'
 import Confirm from '../components/Confirm.vue'
 import Toast from '../components/Toast.vue'
 import FundEditModal from '../components/FundEditModal.vue'
+import { loadFundColumnOrder, type FundColumnKey } from '../utils/columnOrder'
 
 const { t } = useI18n()
 
@@ -284,6 +285,12 @@ const toggleLastColMode = () => {
   localStorage.setItem('fund_lastColMode', String(lastColMode.value))
 }
 
+// 自定义列顺序（持久化到 localStorage，由设置页拖拽调整）
+const columnOrder = ref<FundColumnKey[]>(loadFundColumnOrder())
+const onColumnOrderChanged = () => {
+  columnOrder.value = loadFundColumnOrder()
+}
+
 // 总持仓盈亏
 const totalPnl = computed(() => {
   return funds.value.reduce((total, fund) => {
@@ -363,6 +370,9 @@ const syncWindowSize = () => {
 onMounted(async () => {
   loadFunds()
   fetchAllQuotes(true)
+
+  // 监听设置页中列顺序变化，刷新本视图渲染顺序
+  window.addEventListener('column-order-changed', onColumnOrderChanged)
   // 链式 setTimeout 取代 setInterval：上一轮跑完才发起下一轮，避免请求堆积；
   // 不可见时降速到 30s（基金净值变更频率本来就低），降低后台占用
   const scheduleNext = () => {
@@ -393,6 +403,7 @@ onUnmounted(() => {
   isUnmounted = true
   if (timer) clearTimeout(timer)
   if (resizeObserver) resizeObserver.disconnect()
+  window.removeEventListener('column-order-changed', onColumnOrderChanged)
   // 清理可能仍挂在 window 上的 JSONP 回调与悬挂 <script>
   try {
     delete (window as any).jsonpgz
@@ -411,43 +422,71 @@ onUnmounted(() => {
       <table class="fund-table">
         <thead>
           <tr>
-            <th :title="t('name')" class="clickable-th" @click="toggleSort('name')">
-              {{ t('thFundName') }}
-              <span class="sort-icon">{{
-                sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-              }}</span>
-            </th>
-            <th :title="t('fundNav')" class="clickable-th" @click="toggleSort('nav')">
-              {{ t('thNav') }}
-              <span class="sort-icon">{{
-                sortColumn === 'nav' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-              }}</span>
-            </th>
-            <th :title="t('totalPnl')" class="clickable-th" @click="toggleSort('pnl')">
-              {{ t('thPnl') }}
-              <span class="sort-icon">{{
-                sortColumn === 'pnl' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-              }}</span>
-            </th>
-            <th :title="t('change')" class="clickable-th" @click="toggleSort('chg')">
-              {{ t('thFundChg') }}
-              <span class="sort-icon">{{
-                sortColumn === 'chg' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-              }}</span>
-            </th>
-            <th :title="t('yieldRate')" class="clickable-th" @click="toggleSort('yield')">
-              {{ t('thYield') }}
-              <span class="sort-icon">{{
-                sortColumn === 'yield' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-              }}</span>
-            </th>
-            <th
-              :title="lastColMode === 0 ? t('holdingDays') : t('marketValue')"
-              class="clickable-th"
-              @click="toggleLastColMode"
-            >
-              {{ lastColMode === 0 ? t('thDays') : t('thFundVal') }} <span class="toggle-icon">🔁</span>
-            </th>
+            <template v-for="key in columnOrder" :key="`fth-${key}`">
+              <th
+                v-if="key === 'name'"
+                :title="t('name')"
+                class="clickable-th col-name"
+                @click="toggleSort('name')"
+              >
+                {{ t('thFundName') }}
+                <span class="sort-icon">{{
+                  sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+                }}</span>
+              </th>
+              <th
+                v-else-if="key === 'nav'"
+                :title="t('fundNav')"
+                class="clickable-th col-num"
+                @click="toggleSort('nav')"
+              >
+                {{ t('thNav') }}
+                <span class="sort-icon">{{
+                  sortColumn === 'nav' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+                }}</span>
+              </th>
+              <th
+                v-else-if="key === 'pnl'"
+                :title="t('totalPnl')"
+                class="clickable-th col-num"
+                @click="toggleSort('pnl')"
+              >
+                {{ t('thPnl') }}
+                <span class="sort-icon">{{
+                  sortColumn === 'pnl' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+                }}</span>
+              </th>
+              <th
+                v-else-if="key === 'chg'"
+                :title="t('change')"
+                class="clickable-th col-num"
+                @click="toggleSort('chg')"
+              >
+                {{ t('thFundChg') }}
+                <span class="sort-icon">{{
+                  sortColumn === 'chg' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+                }}</span>
+              </th>
+              <th
+                v-else-if="key === 'yield'"
+                :title="t('yieldRate')"
+                class="clickable-th col-num"
+                @click="toggleSort('yield')"
+              >
+                {{ t('thYield') }}
+                <span class="sort-icon">{{
+                  sortColumn === 'yield' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
+                }}</span>
+              </th>
+              <th
+                v-else-if="key === 'last'"
+                :title="lastColMode === 0 ? t('holdingDays') : t('marketValue')"
+                class="clickable-th col-last"
+                @click="toggleLastColMode"
+              >
+                {{ lastColMode === 0 ? t('thDays') : t('thFundVal') }} <span class="toggle-icon">🔁</span>
+              </th>
+            </template>
           </tr>
         </thead>
         <tbody>
@@ -457,56 +496,74 @@ onUnmounted(() => {
             :class="{ 'row-selected': selectedCodes.includes(fund.code) }"
             @click="toggleRowSelection(fund.code)"
           >
-            <td
-              :class="['name-cell', (quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green']"
-              :title="quotes[fund.code]?.name || fund.code"
-              @click.stop="toggleNameDisplay(fund.code)"
-            >
-              <div class="clickable-tag">
-                <span v-if="!shownCodes.includes(fund.code)"> {{ formatName(quotes[fund.code]?.name) }}</span>
-                <span v-else>{{ fund.code }}</span>
-              </div>
-            </td>
-            <td :class="[(quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green']">
-              {{ quotes[fund.code]?.nav?.toFixed(4) || '--' }}
-            </td>
-            <td
-              :class="[(calculatePnl(fund) || 0) >= 0 ? 'red' : 'green', 'clickable-cell']"
-              :title="t('clickToEdit')"
-              @click.stop="editFund(fund)"
-            >
-              <div class="clickable-tag">
-                {{ calculatePnl(fund) !== null ? calculatePnl(fund)!.toFixed(1) : '--' }}
-              </div>
-            </td>
-            <td :class="(quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green'">
-              <span>
-                <span v-if="quotes[fund.code]">
-                  {{ quotes[fund.code].dayGrowth > 0 ? '+' : '' }}{{ quotes[fund.code].dayGrowth }}%
+            <template v-for="key in columnOrder" :key="`ftd-${fund.code}-${key}`">
+              <td
+                v-if="key === 'name'"
+                :class="['name-cell', (quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green']"
+                :title="quotes[fund.code]?.name || fund.code"
+                @click.stop="toggleNameDisplay(fund.code)"
+              >
+                <div class="clickable-tag">
+                  <span v-if="!shownCodes.includes(fund.code)">
+                    {{ formatName(quotes[fund.code]?.name) }}</span
+                  >
+                  <span v-else>{{ fund.code }}</span>
+                </div>
+              </td>
+              <td
+                v-else-if="key === 'nav'"
+                class="col-num"
+                :class="[(quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green']"
+              >
+                {{ quotes[fund.code]?.nav?.toFixed(4) || '--' }}
+              </td>
+              <td
+                v-else-if="key === 'pnl'"
+                :class="[(calculatePnl(fund) || 0) >= 0 ? 'red' : 'green', 'clickable-cell', 'col-num']"
+                :title="t('clickToEdit')"
+                @click.stop="editFund(fund)"
+              >
+                <div class="clickable-tag">
+                  {{ calculatePnl(fund) !== null ? calculatePnl(fund)!.toFixed(1) : '--' }}
+                </div>
+              </td>
+              <td
+                v-else-if="key === 'chg'"
+                class="col-num"
+                :class="(quotes[fund.code]?.dayGrowth || 0) >= 0 ? 'red' : 'green'"
+              >
+                <span>
+                  <span v-if="quotes[fund.code]">
+                    {{ quotes[fund.code].dayGrowth > 0 ? '+' : '' }}{{ quotes[fund.code].dayGrowth }}%
+                  </span>
+                  <span v-else>--</span>
                 </span>
-                <span v-else>--</span>
-              </span>
-            </td>
-            <td :class="(calculateYield(fund) || 0) >= 0 ? 'red' : 'green'">
-              <span>
-                <span v-if="calculateYield(fund) !== null">
-                  {{ calculateYield(fund)! > 0 ? '+' : '' }}{{ calculateYield(fund)!.toFixed(2) }}%
+              </td>
+              <td
+                v-else-if="key === 'yield'"
+                class="col-num"
+                :class="(calculateYield(fund) || 0) >= 0 ? 'red' : 'green'"
+              >
+                <span>
+                  <span v-if="calculateYield(fund) !== null">
+                    {{ calculateYield(fund)! > 0 ? '+' : '' }}{{ calculateYield(fund)!.toFixed(2) }}%
+                  </span>
+                  <span v-else>--</span>
                 </span>
-                <span v-else>--</span>
-              </span>
-            </td>
-            <td class="days-cell">
-              <span>
-                <template v-if="lastColMode === 0">{{ calcHoldingDays(fund) ?? '--' }}</template>
-                <template v-else>{{
-                  calculateMarketValue(fund) > 0
-                    ? calculateMarketValue(fund).toLocaleString(undefined, {
-                        maximumFractionDigits: 0
-                      })
-                    : '--'
-                }}</template>
-              </span>
-            </td>
+              </td>
+              <td v-else-if="key === 'last'" class="days-cell col-last">
+                <span>
+                  <template v-if="lastColMode === 0">{{ calcHoldingDays(fund) ?? '--' }}</template>
+                  <template v-else>{{
+                    calculateMarketValue(fund) > 0
+                      ? calculateMarketValue(fund).toLocaleString(undefined, {
+                          maximumFractionDigits: 0
+                        })
+                      : '--'
+                  }}</template>
+                </span>
+              </td>
+            </template>
           </tr>
           <tr v-if="funds.length === 0">
             <td colspan="6" class="empty-row">{{ t('noFunds') }}</td>
@@ -593,14 +650,11 @@ onUnmounted(() => {
 .fund-table td {
   font-size: 12px;
 }
-.fund-table td:first-child,
-.fund-table td:nth-child(2) {
+.fund-table td.col-name,
+.fund-table td.col-num {
   text-align: center;
 }
-.fund-table td:nth-child(2),
-.fund-table td:nth-child(3),
-.fund-table td:nth-child(4),
-.fund-table td:nth-child(5) {
+.fund-table td.col-num {
   font-size: 14px;
 }
 

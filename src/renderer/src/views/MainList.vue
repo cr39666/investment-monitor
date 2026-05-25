@@ -5,6 +5,7 @@ import ModuleNavBar from '../components/ModuleNavBar.vue'
 import Modal from '../components/Modal.vue'
 import Confirm from '../components/Confirm.vue'
 import Toast from '../components/Toast.vue'
+import { loadStockColumnOrder, type StockColumnKey } from '../utils/columnOrder'
 
 const { t } = useI18n()
 
@@ -54,18 +55,35 @@ const containerRef = ref<HTMLElement | null>(null)
 const stockInputRef = ref<HTMLInputElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
-// Price 列展示模式：0=现价, 1=涨跌幅, 2=现价/涨跌幅
-const priceDisplayMode = ref(parseInt(localStorage.getItem('stock_priceDisplayMode') || '0'))
-const togglePriceDisplayMode = () => {
-  priceDisplayMode.value = (priceDisplayMode.value + 1) % 3
-  localStorage.setItem('stock_priceDisplayMode', String(priceDisplayMode.value))
-}
-
-// 拆分列（涨跌幅/总盈比/市值）— 多选数组
+// 拆分列（涨跌幅/日盈比/总盈比/市值）— 多选数组
 const splitColumns = ref<string[]>([])
 const splitChg = computed(() => splitColumns.value.includes('chg'))
+const splitDpnl = computed(() => splitColumns.value.includes('dpnl'))
 const splitPnl = computed(() => splitColumns.value.includes('pnl'))
 const splitVal = computed(() => splitColumns.value.includes('val'))
+
+// 自定义列顺序（持久化到 localStorage，由设置页拖拽调整）
+const columnOrder = ref<StockColumnKey[]>(loadStockColumnOrder())
+// 同时刷新拆分列（弹窗内可同时调整列顺序和拆分列）
+const reloadSplitColumns = () => {
+  const splitSaved = localStorage.getItem('stock_splitColumns')
+  if (splitSaved === null) {
+    splitColumns.value = []
+    return
+  }
+  try {
+    const parsed = JSON.parse(splitSaved)
+    if (Array.isArray(parsed)) splitColumns.value = parsed
+    else if (parsed === true) splitColumns.value = ['chg', 'pnl', 'val']
+    else splitColumns.value = []
+  } catch {
+    splitColumns.value = splitSaved === 'true' ? ['chg', 'pnl', 'val'] : []
+  }
+}
+const onColumnOrderChanged = () => {
+  columnOrder.value = loadStockColumnOrder()
+  reloadSplitColumns()
+}
 
 // Qty 列的展示模式：0=持仓手数, 1=价格提醒
 const qtyDisplayMode = ref(parseInt(localStorage.getItem('stock_qtyDisplayMode') || '0'))
@@ -140,6 +158,10 @@ const displayStocks = computed(() => {
               ? (calculateDailyPnlPercent(b) ?? -999999999)
               : (calculateDailyPnl(b) ?? -999999999)
           break
+        case 'dpnlPct':
+          valA = calculateDailyPnlPercent(a) ?? -999999999
+          valB = calculateDailyPnlPercent(b) ?? -999999999
+          break
         case 'tpnl':
           valA =
             tpnlDisplayMode.value === 1
@@ -202,22 +224,29 @@ const toggleNameDisplayMode = () => {
   localStorage.setItem('stock_nameDisplayMode', String(nameDisplayMode.value))
 }
 
-// D.PnL 列展示模式：0=当日盈亏额, 1=当日盈亏比(%), 2=盈亏额/盈亏比
-const dpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_dpnlDisplayMode') || '0'))
+// Price 列展示模式：0=现价, 1=涨跌幅, 2=现价/涨跌幅（默认双显）
+const priceDisplayMode = ref(parseInt(localStorage.getItem('stock_priceDisplayMode') || '2'))
+const togglePriceDisplayMode = () => {
+  priceDisplayMode.value = (priceDisplayMode.value + 1) % 3
+  localStorage.setItem('stock_priceDisplayMode', String(priceDisplayMode.value))
+}
+
+// D.PnL 列展示模式：0=当日盈亏额, 1=当日盈亏比(%), 2=盈亏额/盈亏比（默认双显）
+const dpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_dpnlDisplayMode') || '2'))
 const toggleDpnlDisplayMode = () => {
   dpnlDisplayMode.value = (dpnlDisplayMode.value + 1) % 3
   localStorage.setItem('stock_dpnlDisplayMode', String(dpnlDisplayMode.value))
 }
 
-// T.PnL 列展示模式：0=总盈亏额, 1=总盈亏比(%), 2=盈亏额/盈亏比
-const tpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_tpnlDisplayMode') || '0'))
+// T.PnL 列展示模式：0=总盈亏额, 1=总盈亏比(%), 2=盈亏额/盈亏比（默认双显）
+const tpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_tpnlDisplayMode') || '2'))
 const toggleTpnlDisplayMode = () => {
   tpnlDisplayMode.value = (tpnlDisplayMode.value + 1) % 3
   localStorage.setItem('stock_tpnlDisplayMode', String(tpnlDisplayMode.value))
 }
 
-// Avg 列展示模式：0=均摊成本, 1=持仓市值, 2=成本/市值
-const avgDisplayMode = ref(parseInt(localStorage.getItem('stock_avgDisplayMode') || '0'))
+// Avg 列展示模式：0=均摊成本, 1=持仓市值, 2=成本/市值（默认双显）
+const avgDisplayMode = ref(parseInt(localStorage.getItem('stock_avgDisplayMode') || '2'))
 const toggleAvgDisplayMode = () => {
   avgDisplayMode.value = (avgDisplayMode.value + 1) % 3
   localStorage.setItem('stock_avgDisplayMode', String(avgDisplayMode.value))
@@ -987,6 +1016,9 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('focus', resetDailyRealizedPnl)
 
+  // 监听设置页中列顺序的变化，刷新本视图的渲染顺序
+  window.addEventListener('column-order-changed', onColumnOrderChanged)
+
   // 等待 Vue DOM 更新完毕后再测量，避免拿到未渲染完成的尺寸
   await nextTick()
 
@@ -1010,6 +1042,7 @@ onUnmounted(() => {
   if (resizeObserver) resizeObserver.disconnect()
   document.removeEventListener('visibilitychange', onVisibilityChange)
   window.removeEventListener('focus', resetDailyRealizedPnl)
+  window.removeEventListener('column-order-changed', onColumnOrderChanged)
 })
 </script>
 
@@ -1020,149 +1053,198 @@ onUnmounted(() => {
       <table class="stock-table">
         <thead>
           <tr>
-            <th :title="nameDisplayMode === 0 ? t('name') : t('stockCode')" class="clickable-th">
-              <span class="th-text" @click="toggleNameDisplayMode">{{
-                nameDisplayMode === 0 ? t('thName') : t('thCode')
-              }}</span>
-              <span class="sort-icon" @click="toggleSort('name')">{{
-                sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-              }}</span>
-            </th>
-            <th
-              :title="
-                splitChg
-                  ? t('currentPrice')
-                  : priceDisplayMode === 0
-                    ? t('currentPrice')
-                    : priceDisplayMode === 1
-                      ? t('change')
-                      : t('priceAndChange')
-              "
-              class="clickable-th"
-            >
-              <span
-                :class="splitChg ? 'th-text-static' : 'th-text'"
-                @click="splitChg ? undefined : togglePriceDisplayMode()"
-                >{{
-                  splitChg
-                    ? t('thPrice')
-                    : priceDisplayMode === 0
-                      ? t('thPrice')
-                      : priceDisplayMode === 1
-                        ? t('thChg')
-                        : t('thPriceChg')
-                }}</span
+            <template v-for="key in columnOrder" :key="`th-${key}`">
+              <!-- name -->
+              <th
+                v-if="key === 'name'"
+                :title="nameDisplayMode === 0 ? t('name') : t('stockCode')"
+                class="clickable-th col-name"
               >
-              <span
-                class="sort-icon"
-                @click="toggleSort(splitChg ? 'curPrice' : priceDisplayMode === 1 ? 'change' : 'curPrice')"
-                >{{
-                  sortColumn === 'curPrice' || sortColumn === 'change'
-                    ? sortOrder === 'asc'
-                      ? '↑'
-                      : '↓'
-                    : '↕'
-                }}</span
+                <span class="th-text" @click="toggleNameDisplayMode">{{
+                  nameDisplayMode === 0 ? t('thName') : t('thCode')
+                }}</span>
+                <span class="sort-icon" @click="toggleSort('name')">{{
+                  sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
+                }}</span>
+              </th>
+
+              <!-- price (+ split chg) -->
+              <template v-else-if="key === 'price'">
+                <th
+                  :title="
+                    splitChg
+                      ? t('currentPrice')
+                      : priceDisplayMode === 0
+                        ? t('currentPrice')
+                        : priceDisplayMode === 1
+                          ? t('change')
+                          : t('priceAndChange')
+                  "
+                  class="clickable-th col-price"
+                >
+                  <span
+                    :class="splitChg ? 'th-text-static' : 'th-text'"
+                    @click="splitChg ? undefined : togglePriceDisplayMode()"
+                    >{{
+                      splitChg
+                        ? t('thPrice')
+                        : priceDisplayMode === 0
+                          ? t('thPrice')
+                          : priceDisplayMode === 1
+                            ? t('thChg')
+                            : t('thPriceChg')
+                    }}</span
+                  >
+                  <span
+                    class="sort-icon"
+                    @click="
+                      toggleSort(splitChg ? 'curPrice' : priceDisplayMode === 1 ? 'change' : 'curPrice')
+                    "
+                    >{{
+                      sortColumn === 'curPrice' || sortColumn === 'change'
+                        ? sortOrder === 'asc'
+                          ? '↑'
+                          : '↓'
+                        : '↕'
+                    }}</span
+                  >
+                </th>
+                <th v-if="splitChg" :title="t('change')" class="clickable-th col-num">
+                  <span class="th-text-static">{{ t('thChg') }}</span>
+                  <span class="sort-icon" @click="toggleSort('change')">{{
+                    sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
+                  }}</span>
+                </th>
+              </template>
+
+              <!-- dpnl (+ split dpnlPct) -->
+              <template v-else-if="key === 'dpnl'">
+                <th
+                  :title="
+                    splitDpnl
+                      ? t('dailyPnl')
+                      : dpnlDisplayMode === 0
+                        ? t('dailyPnl')
+                        : dpnlDisplayMode === 1
+                          ? t('dailyPnlPercent')
+                          : t('dailyPnl') + ' / ' + t('dailyPnlPercent')
+                  "
+                  class="clickable-th col-num"
+                >
+                  <span
+                    :class="splitDpnl ? 'th-text-static' : 'th-text'"
+                    @click="splitDpnl ? undefined : toggleDpnlDisplayMode()"
+                    >{{
+                      splitDpnl
+                        ? t('thDPnl')
+                        : dpnlDisplayMode === 0
+                          ? t('thDPnl')
+                          : dpnlDisplayMode === 1
+                            ? t('thDPnlPct')
+                            : t('thDPnlBoth')
+                    }}</span
+                  >
+                  <span class="sort-icon" @click="toggleSort('dpnl')">{{
+                    sortColumn === 'dpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
+                  }}</span>
+                </th>
+                <th v-if="splitDpnl" :title="t('dailyPnlPercent')" class="clickable-th col-num">
+                  <span class="th-text-static">{{ t('thDPnlPct') }}</span>
+                  <span class="sort-icon" @click="toggleSort('dpnlPct')">{{
+                    sortColumn === 'dpnlPct' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
+                  }}</span>
+                </th>
+              </template>
+
+              <!-- tpnl (+ split tpnlPct) -->
+              <template v-else-if="key === 'tpnl'">
+                <th
+                  :title="
+                    splitPnl
+                      ? t('totalPnl')
+                      : tpnlDisplayMode === 0
+                        ? t('totalPnl')
+                        : tpnlDisplayMode === 1
+                          ? t('totalPnlPercent')
+                          : t('totalPnl') + ' / ' + t('totalPnlPercent')
+                  "
+                  class="clickable-th col-num"
+                >
+                  <span
+                    :class="splitPnl ? 'th-text-static' : 'th-text'"
+                    @click="splitPnl ? undefined : toggleTpnlDisplayMode()"
+                    >{{
+                      splitPnl
+                        ? t('thTPnl')
+                        : tpnlDisplayMode === 0
+                          ? t('thTPnl')
+                          : tpnlDisplayMode === 1
+                            ? t('thTPnlPct')
+                            : t('thTPnlBoth')
+                    }}</span
+                  >
+                  <span class="sort-icon" @click="toggleSort('tpnl')">{{
+                    sortColumn === 'tpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
+                  }}</span>
+                </th>
+                <th v-if="splitPnl" :title="t('totalPnlPercent')" class="clickable-th col-num">
+                  <span class="th-text-static">{{ t('thTPnlPct') }}</span>
+                  <span class="sort-icon" @click="toggleSort('tpnlPct')">{{
+                    sortColumn === 'tpnlPct' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
+                  }}</span>
+                </th>
+              </template>
+
+              <!-- avg (+ split marketVal) -->
+              <template v-else-if="key === 'avg'">
+                <th
+                  :title="
+                    splitVal
+                      ? t('avgBuyPrice')
+                      : avgDisplayMode === 0
+                        ? t('avgBuyPrice')
+                        : avgDisplayMode === 1
+                          ? t('marketValue')
+                          : t('avgBuyPrice') + ' / ' + t('marketValue')
+                  "
+                  class="clickable-th col-avg"
+                >
+                  <span
+                    :class="splitVal ? 'th-text-static' : 'th-text'"
+                    @click="splitVal ? undefined : toggleAvgDisplayMode()"
+                    >{{
+                      splitVal
+                        ? t('thAvg')
+                        : avgDisplayMode === 0
+                          ? t('thAvg')
+                          : avgDisplayMode === 1
+                            ? t('thVal')
+                            : t('thAvgVal')
+                    }}</span
+                  >
+                  <span class="sort-icon" @click="toggleSort('avg')">{{
+                    sortColumn === 'avg' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
+                  }}</span>
+                </th>
+                <th v-if="splitVal" :title="t('marketValue')" class="clickable-th col-avg">
+                  <span class="th-text-static">{{ t('thVal') }}</span>
+                  <span class="sort-icon" @click="toggleSort('marketVal')">{{
+                    sortColumn === 'marketVal' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
+                  }}</span>
+                </th>
+              </template>
+
+              <!-- qty -->
+              <th
+                v-else-if="key === 'qty'"
+                :title="qtyDisplayMode === 0 ? t('amount') : t('priceAlert')"
+                class="clickable-th col-qty"
               >
-            </th>
-            <th v-if="splitChg" :title="t('change')" class="clickable-th">
-              <span class="th-text-static">{{ t('thChg') }}</span>
-              <span class="sort-icon" @click="toggleSort('change')">{{
-                sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-              }}</span>
-            </th>
-            <th
-              :title="
-                dpnlDisplayMode === 0
-                  ? t('dailyPnl')
-                  : dpnlDisplayMode === 1
-                    ? t('dailyPnlPercent')
-                    : t('dailyPnl') + ' / ' + t('dailyPnlPercent')
-              "
-              class="clickable-th"
-            >
-              <span class="th-text" @click="toggleDpnlDisplayMode">{{
-                dpnlDisplayMode === 0 ? t('thDPnl') : dpnlDisplayMode === 1 ? t('thDPnlPct') : t('thDPnlBoth')
-              }}</span>
-              <span class="sort-icon" @click="toggleSort('dpnl')">{{
-                sortColumn === 'dpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-              }}</span>
-            </th>
-            <th
-              :title="
-                splitPnl
-                  ? t('totalPnl')
-                  : tpnlDisplayMode === 0
-                    ? t('totalPnl')
-                    : tpnlDisplayMode === 1
-                      ? t('totalPnlPercent')
-                      : t('totalPnl') + ' / ' + t('totalPnlPercent')
-              "
-              class="clickable-th"
-            >
-              <span
-                :class="splitPnl ? 'th-text-static' : 'th-text'"
-                @click="splitPnl ? undefined : toggleTpnlDisplayMode()"
-                >{{
-                  splitPnl
-                    ? t('thTPnl')
-                    : tpnlDisplayMode === 0
-                      ? t('thTPnl')
-                      : tpnlDisplayMode === 1
-                        ? t('thTPnlPct')
-                        : t('thTPnlBoth')
-                }}</span
-              >
-              <span class="sort-icon" @click="toggleSort('tpnl')">{{
-                sortColumn === 'tpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-              }}</span>
-            </th>
-            <th v-if="splitPnl" :title="t('totalPnlPercent')" class="clickable-th">
-              <span class="th-text-static">{{ t('thTPnlPct') }}</span>
-              <span class="sort-icon" @click="toggleSort('tpnlPct')">{{
-                sortColumn === 'tpnlPct' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-              }}</span>
-            </th>
-            <th
-              :title="
-                splitVal
-                  ? t('avgBuyPrice')
-                  : avgDisplayMode === 0
-                    ? t('avgBuyPrice')
-                    : avgDisplayMode === 1
-                      ? t('marketValue')
-                      : t('avgBuyPrice') + ' / ' + t('marketValue')
-              "
-              class="clickable-th"
-            >
-              <span
-                :class="splitVal ? 'th-text-static' : 'th-text'"
-                @click="splitVal ? undefined : toggleAvgDisplayMode()"
-                >{{
-                  splitVal
-                    ? t('thAvg')
-                    : avgDisplayMode === 0
-                      ? t('thAvg')
-                      : avgDisplayMode === 1
-                        ? t('thVal')
-                        : t('thAvgVal')
-                }}</span
-              >
-              <span class="sort-icon" @click="toggleSort('avg')">{{
-                sortColumn === 'avg' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-              }}</span>
-            </th>
-            <th v-if="splitVal" :title="t('marketValue')" class="clickable-th">
-              <span class="th-text-static">{{ t('thVal') }}</span>
-              <span class="sort-icon" @click="toggleSort('marketVal')">{{
-                sortColumn === 'marketVal' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-              }}</span>
-            </th>
-            <th :title="qtyDisplayMode === 0 ? t('amount') : t('priceAlert')" class="clickable-th">
-              <span class="th-text" @click="toggleQtyDisplayMode">{{
-                qtyDisplayMode === 0 ? t('thQty') : t('thAlert')
-              }}</span>
-            </th>
+                <span class="th-text" @click="toggleQtyDisplayMode">{{
+                  qtyDisplayMode === 0 ? t('thQty') : t('thAlert')
+                }}</span>
+              </th>
+            </template>
           </tr>
         </thead>
         <tbody>
@@ -1172,153 +1254,199 @@ onUnmounted(() => {
             :class="{ 'row-selected': selectedCodes.includes(stock.code) }"
             @click="toggleRowSelection(stock.code)"
           >
-            <td
-              :class="['name-cell', (quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
-              :title="quotes[stock.code]?.name || stock.code"
-              @click.stop="toggleNameDisplay(stock.code)"
-            >
-              <div class="clickable-tag">
-                <span
-                  v-if="
-                    (nameDisplayMode === 0 && !shownCodes.includes(stock.code)) ||
-                    (nameDisplayMode === 1 && shownCodes.includes(stock.code))
-                  "
-                  >{{ formatName(quotes[stock.code]?.name) }}</span
+            <template v-for="key in columnOrder" :key="`td-${stock.code}-${key}`">
+              <!-- name -->
+              <td
+                v-if="key === 'name'"
+                :class="['name-cell', (quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
+                :title="quotes[stock.code]?.name || stock.code"
+                @click.stop="toggleNameDisplay(stock.code)"
+              >
+                <div class="clickable-tag">
+                  <span
+                    v-if="
+                      (nameDisplayMode === 0 && !shownCodes.includes(stock.code)) ||
+                      (nameDisplayMode === 1 && shownCodes.includes(stock.code))
+                    "
+                    >{{ formatName(quotes[stock.code]?.name) }}</span
+                  >
+                  <span v-else>{{ stock.code }}</span>
+                </div>
+              </td>
+
+              <!-- price (+ split chg) -->
+              <template v-else-if="key === 'price'">
+                <td
+                  class="col-price"
+                  :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
                 >
-                <span v-else>{{ stock.code }}</span>
-              </div>
-            </td>
-            <td :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
-              <template v-if="splitChg || priceDisplayMode === 0">
-                {{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}
-              </template>
-              <template v-else-if="priceDisplayMode === 1">
-                <span v-if="quotes[stock.code]">
-                  {{ quotes[stock.code].changeAmount > 0 ? '+' : '' }}{{ quotes[stock.code].changePercent }}%
-                </span>
-                <span v-else>--</span>
-              </template>
-              <template v-else>
-                <div class="price-dual">
-                  <span class="price-main">{{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}</span>
-                  <span v-if="quotes[stock.code]" class="price-chg">
+                  <template v-if="splitChg || priceDisplayMode === 0">
+                    {{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}
+                  </template>
+                  <template v-else-if="priceDisplayMode === 1">
+                    <span v-if="quotes[stock.code]">
+                      {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
+                      }}{{ quotes[stock.code].changePercent }}%
+                    </span>
+                    <span v-else>--</span>
+                  </template>
+                  <template v-else>
+                    <div class="price-dual">
+                      <span class="price-main">{{
+                        quotes[stock.code]?.currentPrice?.toFixed(2) || '--'
+                      }}</span>
+                      <span v-if="quotes[stock.code]" class="price-chg">
+                        {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
+                        }}{{ quotes[stock.code].changePercent }}%
+                      </span>
+                    </div>
+                  </template>
+                </td>
+                <td
+                  v-if="splitChg"
+                  class="chg-cell col-num"
+                  :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
+                >
+                  <span v-if="quotes[stock.code]">
                     {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
                     }}{{ quotes[stock.code].changePercent }}%
                   </span>
-                </div>
+                  <span v-else>--</span>
+                </td>
               </template>
-            </td>
-            <td
-              v-if="splitChg"
-              class="chg-cell"
-              :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
-            >
-              <span v-if="quotes[stock.code]">
-                {{ quotes[stock.code].changeAmount > 0 ? '+' : '' }}{{ quotes[stock.code].changePercent }}%
-              </span>
-              <span v-else>--</span>
-            </td>
-            <td :class="(calculateDailyPnl(stock) ?? 0) >= 0 ? 'red' : 'green'">
-              <span>
-                <template v-if="dpnlDisplayMode === 0">
-                  {{ calculateDailyPnl(stock) !== null ? calculateDailyPnl(stock)!.toFixed(2) : '--' }}
-                </template>
-                <template v-else-if="dpnlDisplayMode === 1">
-                  {{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}
-                </template>
-                <template v-else>
-                  <div class="price-dual">
-                    <span class="price-main">
+
+              <!-- dpnl (+ split dpnlPct) -->
+              <template v-else-if="key === 'dpnl'">
+                <td class="col-num" :class="(calculateDailyPnl(stock) ?? 0) >= 0 ? 'red' : 'green'">
+                  <span>
+                    <template v-if="splitDpnl || dpnlDisplayMode === 0">
                       {{ calculateDailyPnl(stock) !== null ? calculateDailyPnl(stock)!.toFixed(2) : '--' }}
-                    </span>
-                    <span class="price-chg">{{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}</span>
-                  </div>
-                </template>
-              </span>
-            </td>
-            <td class="tpnl-cell" :class="(calculateTotalPnl(stock) || 0) >= 0 ? 'red' : 'green'">
-              <span>
-                <template v-if="splitPnl || tpnlDisplayMode === 0">
-                  {{ calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(2) : '--' }}
-                </template>
-                <template v-else-if="tpnlDisplayMode === 1">
-                  {{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}
-                </template>
-                <template v-else>
-                  <div class="price-dual">
-                    <span class="price-main">{{
-                      calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(2) : '--'
-                    }}</span>
-                    <span class="price-chg">{{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}</span>
-                  </div>
-                </template>
-              </span>
-            </td>
-            <td
-              v-if="splitPnl"
-              class="tpnl-cell"
-              :class="(calculateTotalPnlPercent(stock) || 0) >= 0 ? 'red' : 'green'"
-            >
-              <span>
-                {{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}
-              </span>
-            </td>
-            <td>
-              <span>
-                <template v-if="splitVal || avgDisplayMode === 0">
-                  {{ stock.cost?.toFixed(3) }}
-                </template>
-                <template v-else-if="avgDisplayMode === 1">
-                  {{
-                    calculateMarketValue(stock).toLocaleString(undefined, {
-                      maximumFractionDigits: 0
-                    })
-                  }}
-                </template>
-                <template v-else>
-                  <div class="price-dual">
-                    <span class="price-main">{{ stock.cost?.toFixed(3) }}</span>
-                    <span class="price-chg">{{
+                    </template>
+                    <template v-else-if="dpnlDisplayMode === 1">
+                      {{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}
+                    </template>
+                    <template v-else>
+                      <div class="price-dual">
+                        <span class="price-main">
+                          {{
+                            calculateDailyPnl(stock) !== null ? calculateDailyPnl(stock)!.toFixed(2) : '--'
+                          }}
+                        </span>
+                        <span class="price-chg">{{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}</span>
+                      </div>
+                    </template>
+                  </span>
+                </td>
+                <td
+                  v-if="splitDpnl"
+                  class="col-num"
+                  :class="(calculateDailyPnlPercent(stock) ?? 0) >= 0 ? 'red' : 'green'"
+                >
+                  <span>
+                    {{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}
+                  </span>
+                </td>
+              </template>
+
+              <!-- tpnl (+ split tpnlPct) -->
+              <template v-else-if="key === 'tpnl'">
+                <td class="tpnl-cell col-num" :class="(calculateTotalPnl(stock) || 0) >= 0 ? 'red' : 'green'">
+                  <span>
+                    <template v-if="splitPnl || tpnlDisplayMode === 0">
+                      {{ calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(2) : '--' }}
+                    </template>
+                    <template v-else-if="tpnlDisplayMode === 1">
+                      {{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}
+                    </template>
+                    <template v-else>
+                      <div class="price-dual">
+                        <span class="price-main">{{
+                          calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(2) : '--'
+                        }}</span>
+                        <span class="price-chg">{{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}</span>
+                      </div>
+                    </template>
+                  </span>
+                </td>
+                <td
+                  v-if="splitPnl"
+                  class="tpnl-cell col-num"
+                  :class="(calculateTotalPnlPercent(stock) || 0) >= 0 ? 'red' : 'green'"
+                >
+                  <span>
+                    {{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}
+                  </span>
+                </td>
+              </template>
+
+              <!-- avg (+ split marketVal) -->
+              <template v-else-if="key === 'avg'">
+                <td class="col-avg">
+                  <span>
+                    <template v-if="splitVal || avgDisplayMode === 0">
+                      {{ stock.cost?.toFixed(3) }}
+                    </template>
+                    <template v-else-if="avgDisplayMode === 1">
+                      {{
+                        calculateMarketValue(stock).toLocaleString(undefined, {
+                          maximumFractionDigits: 0
+                        })
+                      }}
+                    </template>
+                    <template v-else>
+                      <div class="price-dual">
+                        <span class="price-main">{{ stock.cost?.toFixed(3) }}</span>
+                        <span class="price-chg">{{
+                          calculateMarketValue(stock).toLocaleString(undefined, {
+                            maximumFractionDigits: 0
+                          })
+                        }}</span>
+                      </div>
+                    </template>
+                  </span>
+                </td>
+                <td v-if="splitVal" class="col-avg">
+                  <span>
+                    {{
                       calculateMarketValue(stock).toLocaleString(undefined, {
                         maximumFractionDigits: 0
                       })
-                    }}</span>
-                  </div>
-                </template>
-              </span>
-            </td>
-            <td v-if="splitVal">
-              <span>
-                {{
-                  calculateMarketValue(stock).toLocaleString(undefined, {
-                    maximumFractionDigits: 0
-                  })
-                }}
-              </span>
-            </td>
-            <td
-              class="clickable-cell"
-              :title="qtyDisplayMode === 0 ? t('clickToAdjust') : t('setPriceAlert')"
-              @click.stop="qtyDisplayMode === 0 ? adjustStockFlow(stock) : setPriceAlert(stock)"
-            >
-              <div
-                class="clickable-tag"
-                :class="{ 'alert-active': qtyDisplayMode === 1 && stock.priceAlerts?.length }"
-              >
-                <template v-if="qtyDisplayMode === 0">
-                  {{ stock.amount }}
-                </template>
-                <template v-else>
-                  <span v-if="stock.priceAlerts?.length" class="alert-text">
-                    {{ formatPriceAlerts(stock) }}
+                    }}
                   </span>
-                  <span v-else class="alert-placeholder">➕</span>
-                </template>
-              </div>
-            </td>
+                </td>
+              </template>
+
+              <!-- qty -->
+              <td
+                v-else-if="key === 'qty'"
+                class="clickable-cell col-qty"
+                :title="qtyDisplayMode === 0 ? t('clickToAdjust') : t('setPriceAlert')"
+                @click.stop="qtyDisplayMode === 0 ? adjustStockFlow(stock) : setPriceAlert(stock)"
+              >
+                <div
+                  class="clickable-tag"
+                  :class="{ 'alert-active': qtyDisplayMode === 1 && stock.priceAlerts?.length }"
+                >
+                  <template v-if="qtyDisplayMode === 0">
+                    {{ stock.amount }}
+                  </template>
+                  <template v-else>
+                    <span v-if="stock.priceAlerts?.length" class="alert-text">
+                      {{ formatPriceAlerts(stock) }}
+                    </span>
+                    <span v-else class="alert-placeholder">➕</span>
+                  </template>
+                </div>
+              </td>
+            </template>
           </tr>
           <tr v-if="stocks.length === 0">
-            <td :colspan="6 + (splitChg ? 1 : 0) + (splitPnl ? 1 : 0) + (splitVal ? 1 : 0)" class="empty-row">
+            <td
+              :colspan="
+                6 + (splitChg ? 1 : 0) + (splitDpnl ? 1 : 0) + (splitPnl ? 1 : 0) + (splitVal ? 1 : 0)
+              "
+              class="empty-row"
+            >
               {{ t('noStocks') }}
             </td>
           </tr>
@@ -1529,8 +1657,10 @@ onUnmounted(() => {
 
 .stock-table th:first-child,
 .stock-table td:first-child,
-.stock-table td:nth-child(2),
-.stock-table td:nth-child(5),
+.stock-table td.col-name,
+.stock-table td.col-price,
+.stock-table td.col-avg,
+.stock-table td.col-qty,
 .stock-table td:last-child {
   text-align: center;
 }
@@ -1795,10 +1925,10 @@ onUnmounted(() => {
   font-size: 10px; /* Reduced font size for Name column */
 }
 
-/* Adjust font sizes for specific columns: 2 (Price), 3 (D.PnL), 4 (T.PnL) */
-.stock-table td:nth-child(2),
-.stock-table td:nth-child(3),
-.stock-table td:nth-child(4) {
+/* 数值列字号统一加大（原 nth-child(2/3/4) 行为，改为基于列 class，
+   避免列重排后 nth-child 索引错位） */
+.stock-table td.col-price,
+.stock-table td.col-num {
   font-size: 14px;
 }
 

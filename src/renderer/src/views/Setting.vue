@@ -7,6 +7,7 @@ import Toast from '../components/Toast.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import FeeSettingModal from '../components/FeeSettingModal.vue'
 import GoldFeeSettingModal from '../components/GoldFeeSettingModal.vue'
+import ColumnOrderModal from '../components/ColumnOrderModal.vue'
 import { getLastMainView } from '../router'
 import { appVersion as version, useUpdateCheck } from '../composables/useUpdateCheck'
 
@@ -138,27 +139,23 @@ const changeBallDisplayMode = (mode: string) => {
   localStorage.setItem('ball_display_mode', mode)
 }
 
-// 拆分列（涨跌幅/总盈比/市值）— 多选数组
-const splitColumns = ref<string[]>([])
-const toggleSplitColumn = (col: string) => {
-  if (splitColumns.value.includes(col)) {
-    splitColumns.value = splitColumns.value.filter((c) => c !== col)
-  } else {
-    splitColumns.value.push(col)
-  }
-  localStorage.setItem('stock_splitColumns', JSON.stringify(splitColumns.value))
-}
-
 // 手续费设置弹框
 const showFeeModal = ref(false)
 const showGoldFeeModal = ref(false)
 
+// 列顺序设置弹框
+const showColumnOrderModal = ref(false)
+const columnOrderType = ref<'stock' | 'fund'>('stock')
+const openColumnOrderModal = (type: 'stock' | 'fund') => {
+  columnOrderType.value = type
+  showColumnOrderModal.value = true
+}
+
 // 分组折叠状态（默认全部折叠）
-type GroupKey = 'general' | 'display' | 'ball' | 'trade'
+type GroupKey = 'general' | 'display' | 'trade'
 const expandedGroups = ref<Record<GroupKey, boolean>>({
   general: false,
   display: false,
-  ball: false,
   trade: false
 })
 const toggleGroup = (key: GroupKey) => {
@@ -250,27 +247,6 @@ onMounted(async () => {
       }
     } catch {
       /* ignore */
-    }
-  }
-
-  // 加载拆分列配置（兼容旧布尔值格式）
-  const splitSaved = localStorage.getItem('stock_splitColumns')
-  if (splitSaved !== null) {
-    try {
-      const parsed = JSON.parse(splitSaved)
-      if (Array.isArray(parsed)) {
-        splitColumns.value = parsed
-      } else if (parsed === true) {
-        // 旧格式兼容：布尔 true 迁移为全选
-        splitColumns.value = ['chg', 'pnl', 'val']
-        localStorage.setItem('stock_splitColumns', JSON.stringify(splitColumns.value))
-      }
-    } catch {
-      // 旧格式 'true'/'false' 字符串
-      if (splitSaved === 'true') {
-        splitColumns.value = ['chg', 'pnl', 'val']
-        localStorage.setItem('stock_splitColumns', JSON.stringify(splitColumns.value))
-      }
     }
   }
 
@@ -368,6 +344,49 @@ onUnmounted(() => {
           <span class="group-arrow" :class="{ open: expandedGroups.display }">▶</span>
           <span>{{ t('groupDisplay') }}</span>
         </div>
+        <!-- 1. 置顶显示 -->
+        <div v-show="expandedGroups.display" class="setting-item">
+          <span class="label">{{ t('alwaysOnTop') }}</span>
+          <div class="lang-select">
+            <span class="lang-option" :class="{ active: ballAlwaysOnTop }" @click="toggleBallAlwaysOnTop">{{
+              t('topBall')
+            }}</span>
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: windowAlwaysOnTop }"
+              @click="toggleWindowAlwaysOnTop"
+              >{{ t('topWindow') }}</span
+            >
+          </div>
+        </div>
+        <!-- 2. 悬浮球金额（原"悬浮球"分组合并而来） -->
+        <div v-show="expandedGroups.display" class="setting-item">
+          <span class="label">{{ t('ballDisplayMode') }}</span>
+          <div class="lang-select">
+            <span
+              class="lang-option"
+              :class="{ active: ballDisplayMode === 'stock' }"
+              @click="changeBallDisplayMode('stock')"
+              >{{ t('ballModeStock') }}</span
+            >
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: ballDisplayMode === 'gold' }"
+              @click="changeBallDisplayMode('gold')"
+              >{{ t('ballModeGold') }}</span
+            >
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: ballDisplayMode === 'none' }"
+              @click="changeBallDisplayMode('none')"
+              >{{ t('ballModeNone') }}</span
+            >
+          </div>
+        </div>
+        <!-- 3. 模块显示 -->
         <div v-show="expandedGroups.display" class="setting-item">
           <span class="label">{{ t('showModules') }}</span>
           <div class="lang-select">
@@ -393,86 +412,26 @@ onUnmounted(() => {
             >
           </div>
         </div>
-        <div v-show="expandedGroups.display" class="setting-item">
-          <span class="label">{{ t('alwaysOnTop') }}</span>
-          <div class="lang-select">
-            <span class="lang-option" :class="{ active: ballAlwaysOnTop }" @click="toggleBallAlwaysOnTop">{{
-              t('topBall')
-            }}</span>
-            <span class="lang-divider">|</span>
-            <span
-              class="lang-option"
-              :class="{ active: windowAlwaysOnTop }"
-              @click="toggleWindowAlwaysOnTop"
-              >{{ t('topWindow') }}</span
-            >
-          </div>
-        </div>
-        <div v-show="expandedGroups.display" class="setting-item">
-          <span class="label">{{ t('splitColumns') }}</span>
-          <div class="lang-select">
-            <span
-              class="lang-option"
-              :class="{ active: splitColumns.includes('chg') }"
-              @click="toggleSplitColumn('chg')"
-              >{{ t('splitChg') }}</span
-            >
-            <span class="lang-divider">|</span>
-            <span
-              class="lang-option"
-              :class="{ active: splitColumns.includes('pnl') }"
-              @click="toggleSplitColumn('pnl')"
-              >{{ t('splitPnl') }}</span
-            >
-            <span class="lang-divider">|</span>
-            <span
-              class="lang-option"
-              :class="{ active: splitColumns.includes('val') }"
-              @click="toggleSplitColumn('val')"
-              >{{ t('splitVal') }}</span
-            >
-          </div>
-        </div>
       </div>
 
-      <!-- 悬浮球 -->
-      <div class="setting-group" :class="{ collapsed: !expandedGroups.ball }">
-        <div class="group-title" @click="toggleGroup('ball')">
-          <span class="group-arrow" :class="{ open: expandedGroups.ball }">▶</span>
-          <span>{{ t('groupBall') }}</span>
-        </div>
-        <div v-show="expandedGroups.ball" class="setting-item">
-          <span class="label">{{ t('ballDisplayMode') }}</span>
-          <div class="lang-select">
-            <span
-              class="lang-option"
-              :class="{ active: ballDisplayMode === 'stock' }"
-              @click="changeBallDisplayMode('stock')"
-              >{{ t('ballModeStock') }}</span
-            >
-            <span class="lang-divider">|</span>
-            <span
-              class="lang-option"
-              :class="{ active: ballDisplayMode === 'gold' }"
-              @click="changeBallDisplayMode('gold')"
-              >{{ t('ballModeGold') }}</span
-            >
-            <span class="lang-divider">|</span>
-            <span
-              class="lang-option"
-              :class="{ active: ballDisplayMode === 'none' }"
-              @click="changeBallDisplayMode('none')"
-              >{{ t('ballModeNone') }}</span
-            >
-          </div>
-        </div>
-      </div>
-
-      <!-- 交易 -->
+      <!-- 操作 -->
       <div class="setting-group" :class="{ collapsed: !expandedGroups.trade }">
         <div class="group-title" @click="toggleGroup('trade')">
           <span class="group-arrow" :class="{ open: expandedGroups.trade }">▶</span>
-          <span>{{ t('groupTrade') }}</span>
+          <span>{{ t('groupOperation') }}</span>
+        </div>
+        <!-- 列表列自定义（弹窗内拖拽列顺序 + 切换拆分列） -->
+        <div v-show="expandedGroups.trade" class="setting-item">
+          <span class="label">{{ t('columnCustomize') }}</span>
+          <div class="lang-select">
+            <span class="lang-option fee-link" @click="openColumnOrderModal('stock')">{{
+              t('columnOrderStock')
+            }}</span>
+            <span class="lang-divider">|</span>
+            <span class="lang-option fee-link" @click="openColumnOrderModal('fund')">{{
+              t('columnOrderFund')
+            }}</span>
+          </div>
         </div>
         <div v-show="expandedGroups.trade" class="setting-item">
           <span class="label">{{ t('feeSetting') }}</span>
@@ -489,18 +448,23 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
-
-      <div class="setting-item version-item" @click="goToAbout">
-        <span class="label">{{ t('appVersion') }}</span>
-        <div class="version-display">
-          v{{ version }}
-          <span v-if="hasPendingUpdate" class="update-dot"></span>
-        </div>
+    </div>
+    <!-- 版本号：放在可滚动内容外，常驻底部 -->
+    <div class="setting-item version-item" @click="goToAbout">
+      <span class="label">{{ t('appVersion') }}</span>
+      <div class="version-display">
+        v{{ version }}
+        <span v-if="hasPendingUpdate" class="update-dot"></span>
       </div>
     </div>
     <Toast ref="toastRef" />
     <FeeSettingModal :show="showFeeModal" @close="showFeeModal = false" />
     <GoldFeeSettingModal :show="showGoldFeeModal" @close="showGoldFeeModal = false" />
+    <ColumnOrderModal
+      :show="showColumnOrderModal"
+      :type="columnOrderType"
+      @close="showColumnOrderModal = false"
+    />
   </div>
 </template>
 
@@ -588,6 +552,29 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  /* 给滚动条留出空间，避免覆盖右侧内容 */
+  padding-right: 4px;
+  margin-right: -4px;
+}
+
+/* 自定义滚动条样式，与整体毛玻璃风格一致 */
+.setting-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.setting-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.setting-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.setting-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .setting-group {
@@ -703,8 +690,9 @@ onUnmounted(() => {
 .version-item {
   cursor: pointer;
   transition: opacity 0.2s;
-  padding-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 6px;
+  margin-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .version-item:hover {
