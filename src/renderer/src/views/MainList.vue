@@ -575,9 +575,13 @@ const adjustStockFlow = async (stock: StockItem) => {
       const buyFee = calcTradeFee(tradePrice, delta, 'buy')
       // 旧数据无 totalCostBasis 时按加仓前的持仓成本市值兜底
       const prevBasis = stock.totalCostBasis ?? stock.cost * stock.amount * 100
-      const oldTotalVal = stock.amount * stock.cost
-      const addTotalVal = delta * tradePrice + buyFee // 手续费计入买入成本
-      stock.cost = Number(((oldTotalVal + addTotalVal) / newAmount).toFixed(3))
+      // 注意单位一致性：cost 是"元/股"，amount 是"手"(1手=100股)
+      // 原持仓总金额(元) = cost × amount × 100
+      // 加仓总金额(元)   = tradePrice × delta × 100 + buyFee（手续费已是元）
+      // 新均价(元/股)    = 新持仓总金额 / (newAmount × 100)
+      const oldTotalAmount = stock.cost * stock.amount * 100
+      const addTotalAmount = tradePrice * delta * 100 + buyFee
+      stock.cost = Number(((oldTotalAmount + addTotalAmount) / (newAmount * 100)).toFixed(3))
 
       stock.totalCostBasis = prevBasis + delta * tradePrice * 100 + buyFee
 
