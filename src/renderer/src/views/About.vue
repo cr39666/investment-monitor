@@ -190,10 +190,26 @@ onUnmounted(() => {
         <span class="vue">{{ t('investment') }}</span>
         {{ t('monitor') }}
         <span class="ts">Croyell</span>
-        {{ t('designedBy') }}
+        {{ t('designedBy') }}{{ t('seeDetails')
+        }}<a
+          class="github-link"
+          href="https://github.com/cr39666/investment-monitor"
+          target="_blank"
+          rel="noopener noreferrer"
+          >GitHub</a
+        >
       </div>
     </div>
     <div class="version-container">
+      <a
+        class="changelog-btn"
+        href="https://github.com/cr39666/investment-monitor/releases"
+        target="_blank"
+        rel="noopener noreferrer"
+        :title="t('viewChangelog')"
+      >
+        📒
+      </a>
       <span
         class="app-version"
         :class="{ 'has-update': hasPendingUpdate }"
@@ -244,9 +260,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   position: relative;
-  padding: 10px 20px 20px 20px;
+  padding: 10px 20px 26px 20px;
   background-color: rgba(31, 34, 46, 0.85);
   border-radius: 16px;
   overflow: hidden;
@@ -286,7 +302,8 @@ onUnmounted(() => {
 .logo {
   width: 70px;
   height: 70px;
-  margin-bottom: 20px;
+  margin-top: 20px;
+  margin-bottom: 10px;
   cursor: pointer;
   transform-origin: center;
   scale: 1;
@@ -314,18 +331,61 @@ onUnmounted(() => {
 .text {
   font-size: 14px;
   text-align: center;
+  font-weight: 700;
+  line-height: 28px;
+  margin: 0 10px;
+  padding: 10px 0;
+}
+
+.github-link {
+  color: #6cb6ff;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.github-link:hover {
+  color: #8fcaff;
 }
 
 .version-container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.6);
-  margin: 0;
+  margin: auto 0 0;
   padding: 0;
+}
+
+.changelog-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 2px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.changelog-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+  transform: scale(1.08);
+}
+
+.changelog-btn:active {
+  transform: scale(0.95);
 }
 
 .app-version {
@@ -334,9 +394,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
+  padding: 2px 12px;
   background-color: rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s ease;
   color: rgba(255, 255, 255, 0.8);
