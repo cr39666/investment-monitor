@@ -21,7 +21,7 @@ export default {
   fundFeeNotSupported: '基金暂不支持手续费设置',
   english: 'English',
   chinese: '中文',
-  default: '默认',
+  default: '混合',
   appVersion: '版本号',
   autoLaunch: '开机自启',
   groupGeneral: '通用',

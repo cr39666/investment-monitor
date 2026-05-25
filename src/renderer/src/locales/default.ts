@@ -21,7 +21,7 @@ export default {
   fundFeeNotSupported: 'Fund fee setting is not supported yet',
   english: 'English',
   chinese: '中文',
-  default: 'Default',
+  default: 'Mixed',
   appVersion: 'Version',
   autoLaunch: 'Auto Start',
   groupGeneral: 'General',
