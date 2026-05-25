@@ -153,6 +153,19 @@ const toggleSplitColumn = (col: string) => {
 const showFeeModal = ref(false)
 const showGoldFeeModal = ref(false)
 
+// 分组折叠状态（默认全部折叠）
+type GroupKey = 'general' | 'display' | 'ball' | 'trade'
+const expandedGroups = ref<Record<GroupKey, boolean>>({
+  general: false,
+  display: false,
+  ball: false,
+  trade: false
+})
+const toggleGroup = (key: GroupKey) => {
+  expandedGroups.value[key] = !expandedGroups.value[key]
+  localStorage.setItem('setting_expanded_groups', JSON.stringify(expandedGroups.value))
+}
+
 const showModules = ref<string[]>(['stock', 'gold', 'fund'])
 const toggleModule = (module: string) => {
   if (showModules.value.includes(module)) {
@@ -227,6 +240,19 @@ onMounted(async () => {
     globalHotkey.value = hotkeySaved
   }
 
+  // 加载分组展开状态（默认折叠）
+  const groupsSaved = localStorage.getItem('setting_expanded_groups')
+  if (groupsSaved !== null) {
+    try {
+      const parsed = JSON.parse(groupsSaved)
+      if (parsed && typeof parsed === 'object') {
+        expandedGroups.value = { ...expandedGroups.value, ...parsed }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   // 加载拆分列配置（兼容旧布尔值格式）
   const splitSaved = localStorage.getItem('stock_splitColumns')
   if (splitSaved !== null) {
@@ -293,138 +319,177 @@ onUnmounted(() => {
       </template>
     </DragHandle>
     <div class="setting-content">
-      <div class="setting-item">
-        <span class="label">{{ t('language') }}</span>
-        <div class="lang-select">
-          <span
-            class="lang-option"
-            :class="{ active: locale === 'default' }"
-            @click="changeLanguage('default')"
-            >{{ t('default') }}</span
+      <!-- 通用 -->
+      <div class="setting-group" :class="{ collapsed: !expandedGroups.general }">
+        <div class="group-title" @click="toggleGroup('general')">
+          <span class="group-arrow" :class="{ open: expandedGroups.general }">▶</span>
+          <span>{{ t('groupGeneral') }}</span>
+        </div>
+        <div v-show="expandedGroups.general" class="setting-item">
+          <span class="label">{{ t('language') }}</span>
+          <div class="lang-select">
+            <span
+              class="lang-option"
+              :class="{ active: locale === 'default' }"
+              @click="changeLanguage('default')"
+              >{{ t('default') }}</span
+            >
+            <span class="lang-divider">|</span>
+            <span class="lang-option" :class="{ active: locale === 'en' }" @click="changeLanguage('en')">{{
+              t('english')
+            }}</span>
+            <span class="lang-divider">|</span>
+            <span class="lang-option" :class="{ active: locale === 'zh' }" @click="changeLanguage('zh')">{{
+              t('chinese')
+            }}</span>
+          </div>
+        </div>
+        <div v-show="expandedGroups.general" class="setting-item">
+          <span class="label">{{ t('autoLaunch') }}</span>
+          <ToggleSwitch :active="autoLaunch" @toggle="toggleAutoLaunch" />
+        </div>
+        <div v-show="expandedGroups.general" class="setting-item hotkey-item">
+          <span class="label">{{ t('hotkeyLabel') }}</span>
+          <div
+            class="hotkey-display"
+            :class="{ recording: isRecording, empty: !globalHotkey && !isRecording }"
+            @click="startRecording"
           >
-          <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: locale === 'en' }" @click="changeLanguage('en')">{{
-            t('english')
-          }}</span>
-          <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: locale === 'zh' }" @click="changeLanguage('zh')">{{
-            t('chinese')
-          }}</span>
+            <span v-if="isRecording">{{ t('pressKeys') }}</span>
+            <span v-else-if="globalHotkey">{{ globalHotkey }}</span>
+            <span v-else class="placeholder">{{ t('clickToSet') }}</span>
+          </div>
         </div>
       </div>
-      <div class="setting-item">
-        <span class="label">{{ t('alwaysOnTop') }}</span>
-        <div class="lang-select">
-          <span class="lang-option" :class="{ active: ballAlwaysOnTop }" @click="toggleBallAlwaysOnTop">{{
-            t('topBall')
-          }}</span>
-          <span class="lang-divider">|</span>
-          <span class="lang-option" :class="{ active: windowAlwaysOnTop }" @click="toggleWindowAlwaysOnTop">{{
-            t('topWindow')
-          }}</span>
+
+      <!-- 显示 -->
+      <div class="setting-group" :class="{ collapsed: !expandedGroups.display }">
+        <div class="group-title" @click="toggleGroup('display')">
+          <span class="group-arrow" :class="{ open: expandedGroups.display }">▶</span>
+          <span>{{ t('groupDisplay') }}</span>
+        </div>
+        <div v-show="expandedGroups.display" class="setting-item">
+          <span class="label">{{ t('showModules') }}</span>
+          <div class="lang-select">
+            <span
+              class="lang-option"
+              :class="{ active: showModules.includes('stock') }"
+              @click="toggleModule('stock')"
+              >{{ t('moduleStock') }}</span
+            >
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: showModules.includes('gold') }"
+              @click="toggleModule('gold')"
+              >{{ t('moduleGold') }}</span
+            >
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: showModules.includes('fund') }"
+              @click="toggleModule('fund')"
+              >{{ t('moduleFund') }}</span
+            >
+          </div>
+        </div>
+        <div v-show="expandedGroups.display" class="setting-item">
+          <span class="label">{{ t('alwaysOnTop') }}</span>
+          <div class="lang-select">
+            <span class="lang-option" :class="{ active: ballAlwaysOnTop }" @click="toggleBallAlwaysOnTop">{{
+              t('topBall')
+            }}</span>
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: windowAlwaysOnTop }"
+              @click="toggleWindowAlwaysOnTop"
+              >{{ t('topWindow') }}</span
+            >
+          </div>
+        </div>
+        <div v-show="expandedGroups.display" class="setting-item">
+          <span class="label">{{ t('splitColumns') }}</span>
+          <div class="lang-select">
+            <span
+              class="lang-option"
+              :class="{ active: splitColumns.includes('chg') }"
+              @click="toggleSplitColumn('chg')"
+              >{{ t('splitChg') }}</span
+            >
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: splitColumns.includes('pnl') }"
+              @click="toggleSplitColumn('pnl')"
+              >{{ t('splitPnl') }}</span
+            >
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: splitColumns.includes('val') }"
+              @click="toggleSplitColumn('val')"
+              >{{ t('splitVal') }}</span
+            >
+          </div>
         </div>
       </div>
-      <div class="setting-item">
-        <span class="label">{{ t('ballDisplayMode') }}</span>
-        <div class="lang-select">
-          <span
-            class="lang-option"
-            :class="{ active: ballDisplayMode === 'stock' }"
-            @click="changeBallDisplayMode('stock')"
-            >{{ t('ballModeStock') }}</span
-          >
-          <span class="lang-divider">|</span>
-          <span
-            class="lang-option"
-            :class="{ active: ballDisplayMode === 'gold' }"
-            @click="changeBallDisplayMode('gold')"
-            >{{ t('ballModeGold') }}</span
-          >
-          <span class="lang-divider">|</span>
-          <span
-            class="lang-option"
-            :class="{ active: ballDisplayMode === 'none' }"
-            @click="changeBallDisplayMode('none')"
-            >{{ t('ballModeNone') }}</span
-          >
+
+      <!-- 悬浮球 -->
+      <div class="setting-group" :class="{ collapsed: !expandedGroups.ball }">
+        <div class="group-title" @click="toggleGroup('ball')">
+          <span class="group-arrow" :class="{ open: expandedGroups.ball }">▶</span>
+          <span>{{ t('groupBall') }}</span>
+        </div>
+        <div v-show="expandedGroups.ball" class="setting-item">
+          <span class="label">{{ t('ballDisplayMode') }}</span>
+          <div class="lang-select">
+            <span
+              class="lang-option"
+              :class="{ active: ballDisplayMode === 'stock' }"
+              @click="changeBallDisplayMode('stock')"
+              >{{ t('ballModeStock') }}</span
+            >
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: ballDisplayMode === 'gold' }"
+              @click="changeBallDisplayMode('gold')"
+              >{{ t('ballModeGold') }}</span
+            >
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option"
+              :class="{ active: ballDisplayMode === 'none' }"
+              @click="changeBallDisplayMode('none')"
+              >{{ t('ballModeNone') }}</span
+            >
+          </div>
         </div>
       </div>
-      <div class="setting-item">
-        <span class="label">{{ t('showModules') }}</span>
-        <div class="lang-select">
-          <span
-            class="lang-option"
-            :class="{ active: showModules.includes('stock') }"
-            @click="toggleModule('stock')"
-            >{{ t('moduleStock') }}</span
-          >
-          <span class="lang-divider">|</span>
-          <span
-            class="lang-option"
-            :class="{ active: showModules.includes('gold') }"
-            @click="toggleModule('gold')"
-            >{{ t('moduleGold') }}</span
-          >
-          <span class="lang-divider">|</span>
-          <span
-            class="lang-option"
-            :class="{ active: showModules.includes('fund') }"
-            @click="toggleModule('fund')"
-            >{{ t('moduleFund') }}</span
-          >
+
+      <!-- 交易 -->
+      <div class="setting-group" :class="{ collapsed: !expandedGroups.trade }">
+        <div class="group-title" @click="toggleGroup('trade')">
+          <span class="group-arrow" :class="{ open: expandedGroups.trade }">▶</span>
+          <span>{{ t('groupTrade') }}</span>
+        </div>
+        <div v-show="expandedGroups.trade" class="setting-item">
+          <span class="label">{{ t('feeSetting') }}</span>
+          <div class="lang-select">
+            <span class="lang-option fee-link" @click="showFeeModal = true">{{ t('moduleStock') }}</span>
+            <span class="lang-divider">|</span>
+            <span class="lang-option fee-link" @click="showGoldFeeModal = true">{{ t('moduleGold') }}</span>
+            <span class="lang-divider">|</span>
+            <span
+              class="lang-option fee-disabled"
+              @click="toastRef?.show(t('fundFeeNotSupported'), 'info')"
+              >{{ t('moduleFund') }}</span
+            >
+          </div>
         </div>
       </div>
-      <div class="setting-item">
-        <span class="label">{{ t('feeSetting') }}</span>
-        <div class="lang-select">
-          <span class="lang-option fee-link" @click="showFeeModal = true">{{ t('moduleStock') }}</span>
-          <span class="lang-divider">|</span>
-          <span class="lang-option fee-link" @click="showGoldFeeModal = true">{{ t('moduleGold') }}</span>
-          <span class="lang-divider">|</span>
-          <span class="lang-option fee-disabled">{{ t('moduleFund') }}</span>
-        </div>
-      </div>
-      <div class="setting-item">
-        <span class="label">{{ t('splitColumns') }}</span>
-        <div class="lang-select">
-          <span
-            class="lang-option"
-            :class="{ active: splitColumns.includes('chg') }"
-            @click="toggleSplitColumn('chg')"
-            >{{ t('splitChg') }}</span
-          >
-          <span class="lang-divider">|</span>
-          <span
-            class="lang-option"
-            :class="{ active: splitColumns.includes('pnl') }"
-            @click="toggleSplitColumn('pnl')"
-            >{{ t('splitPnl') }}</span
-          >
-          <span class="lang-divider">|</span>
-          <span
-            class="lang-option"
-            :class="{ active: splitColumns.includes('val') }"
-            @click="toggleSplitColumn('val')"
-            >{{ t('splitVal') }}</span
-          >
-        </div>
-      </div>
-      <div class="setting-item">
-        <span class="label">{{ t('autoLaunch') }}</span>
-        <ToggleSwitch :active="autoLaunch" @toggle="toggleAutoLaunch" />
-      </div>
-      <div class="setting-item hotkey-item">
-        <span class="label">{{ t('hotkeyLabel') }}</span>
-        <div
-          class="hotkey-display"
-          :class="{ recording: isRecording, empty: !globalHotkey && !isRecording }"
-          @click="startRecording"
-        >
-          <span v-if="isRecording">{{ t('pressKeys') }}</span>
-          <span v-else-if="globalHotkey">{{ globalHotkey }}</span>
-          <span v-else class="placeholder">{{ t('clickToSet') }}</span>
-        </div>
-      </div>
+
       <div class="setting-item version-item" @click="goToAbout">
         <span class="label">{{ t('appVersion') }}</span>
         <div class="version-display">
@@ -481,13 +546,13 @@ onUnmounted(() => {
 }
 
 .setting-container {
-  width: 260px;
+  width: 270px;
   background-color: rgba(31, 34, 46, 0.9);
   backdrop-filter: blur(10px);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); /* 使阴影更聚拢以防止截断 */
-  padding: 4px 12px 12px 12px;
+  padding: 4px 8px 10px;
   margin: 16px; /* 给阴影留出空间 */
   color: #eee;
   display: inline-block;
@@ -522,7 +587,63 @@ onUnmounted(() => {
   padding-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 6px 8px 6px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: padding 0.2s ease;
+}
+
+.setting-group.collapsed {
+  padding: 6px 8px;
+  gap: 0;
+}
+
+.group-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    padding-bottom 0.2s;
+}
+
+.group-title:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.setting-group.collapsed .group-title {
+  padding-bottom: 0;
+  border-bottom-color: transparent;
+}
+
+.group-arrow {
+  display: inline-block;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.35);
+  transform: rotate(0deg);
+  transition: transform 0.2s ease;
+}
+
+.group-arrow.open {
+  transform: rotate(90deg);
 }
 
 .setting-item {
@@ -575,10 +696,14 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
+.fee-disabled:hover {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
 .version-item {
   cursor: pointer;
   transition: opacity 0.2s;
-  padding-top: 6px;
+  padding-top: 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 

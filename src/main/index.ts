@@ -21,7 +21,7 @@ let mainWindow: BrowserWindow | null = null
 let currentHotkey: string = ''
 let ballAlwaysOnTop = true
 let windowAlwaysOnTop = false
-let currentLang: string = 'default'
+let currentLang: string = 'zh'
 // 展开前保存悬浮球位置，切回时恢复
 let ballPosition: { x: number; y: number } | null = null
 // 自动更新周期检查定时器（窗口关闭时清理，避免 macOS 重建窗口时累积）

@@ -18,6 +18,7 @@ export default {
   moduleGold: '黄金',
   moduleFund: '基金',
   selectionRequired: '不能空选',
+  fundFeeNotSupported: '基金暂不支持手续费设置',
   english: 'English',
   chinese: '中文',
   default: '默认',
@@ -27,6 +28,10 @@ export default {
   splitChg: '涨跌幅',
   splitPnl: '总盈比',
   splitVal: '市值',
+  groupGeneral: '通用',
+  groupDisplay: '显示',
+  groupBall: '悬浮球',
+  groupTrade: '交易',
 
   // About.vue
   investment: 'A股&黄金&基金',

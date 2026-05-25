@@ -18,6 +18,7 @@ export default {
   moduleGold: '黄金',
   moduleFund: '基金',
   selectionRequired: '不能空选',
+  fundFeeNotSupported: 'Fund fee setting is not supported yet',
   english: 'English',
   chinese: '中文',
   default: 'Default',
@@ -27,6 +28,10 @@ export default {
   splitChg: '涨跌幅',
   splitPnl: '总盈比',
   splitVal: '市值',
+  groupGeneral: 'General',
+  groupDisplay: 'Display',
+  groupBall: 'Ball',
+  groupTrade: 'Trade',
 
   // About.vue
   investment: 'A-shares & Gold & Funds',

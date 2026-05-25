@@ -3,7 +3,7 @@ import en from './en'
 import zh from './zh'
 import defaultLang from './default'
 
-const savedLang = localStorage.getItem('lang') || 'default'
+const savedLang = localStorage.getItem('lang') || 'zh'
 
 const i18n = createI18n({
   legacy: false,

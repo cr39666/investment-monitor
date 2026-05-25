@@ -18,6 +18,7 @@ export default {
   moduleGold: 'Gold',
   moduleFund: 'Fund',
   selectionRequired: 'Selection Required',
+  fundFeeNotSupported: 'Fund fee setting is not supported yet',
   english: 'English',
   chinese: '中文',
   default: 'Default',
@@ -27,6 +28,10 @@ export default {
   splitChg: 'Chg%',
   splitPnl: 'PnL%',
   splitVal: 'Val',
+  groupGeneral: 'General',
+  groupDisplay: 'Display',
+  groupBall: 'Ball',
+  groupTrade: 'Trade',
 
   // About.vue
   investment: 'A-shares & Gold & Funds',
