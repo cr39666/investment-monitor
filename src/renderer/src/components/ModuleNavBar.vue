@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useSlots } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DragHandle from './DragHandle.vue'
@@ -13,8 +13,10 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const slots = useSlots()
 const router = useRouter()
 const { hasPendingUpdate, checkPendingUpdate } = useUpdateCheck()
+const hoverLabelKey = ref<string | null>(null)
 
 // 显示模块导航配置：与 Setting 中保持一致，从 localStorage 读取
 const visibleModules = ref<ModuleKey[]>(['stock', 'gold', 'fund'])
@@ -25,10 +27,10 @@ const otherModules = computed<ModuleKey[]>(() => {
   return order.filter((m) => m !== props.current && visibleModules.value.includes(m))
 })
 
-const meta: Record<ModuleKey, { icon: string; titleKey: string; route: string }> = {
-  stock: { icon: '📈', titleKey: 'switchToStock', route: '/' },
-  fund: { icon: '💹', titleKey: 'switchToFund', route: '/fund' },
-  gold: { icon: '🟨', titleKey: 'switchToGold', route: '/gold' }
+const meta: Record<ModuleKey, { icon: string; labelKey: string; route: string }> = {
+  stock: { icon: '📈', labelKey: 'stock', route: '/' },
+  fund: { icon: '💹', labelKey: 'fund', route: '/fund' },
+  gold: { icon: '🟨', labelKey: 'gold', route: '/gold' }
 }
 
 const goBack = (): void => {
@@ -43,6 +45,14 @@ const goToSetting = (): void => {
 
 const goTo = (m: ModuleKey): void => {
   router.push(meta[m].route)
+}
+
+const showHoverLabel = (key: string): void => {
+  hoverLabelKey.value = key
+}
+
+const clearHoverLabel = (): void => {
+  hoverLabelKey.value = null
 }
 
 onMounted(() => {
@@ -83,17 +93,31 @@ onMounted(() => {
         <img src="../assets/icon.svg" class="nav-icon" alt="ball" />
       </button>
     </template>
+    <template v-if="slots.navLabel || hoverLabelKey" #navLabel>
+      <span class="navLabel">
+        <template v-if="hoverLabelKey">{{ t(hoverLabelKey) }}</template>
+        <slot v-else name="navLabel"></slot>
+      </span>
+    </template>
     <template #right>
       <button
         v-for="m in otherModules"
         :key="m"
         class="nav-btn"
-        :title="t(meta[m].titleKey)"
+        :title="t(meta[m].labelKey)"
+        @mouseenter="showHoverLabel(meta[m].labelKey)"
+        @mouseleave="clearHoverLabel"
         @click="goTo(m)"
       >
         {{ meta[m].icon }}
       </button>
-      <button class="nav-btn setting-btn" :title="t('goToSetting')" @click="goToSetting">
+      <button
+        class="nav-btn setting-btn"
+        :title="t('settings')"
+        @mouseenter="showHoverLabel('settings')"
+        @mouseleave="clearHoverLabel"
+        @click="goToSetting"
+      >
         ⚙️<span v-if="hasPendingUpdate" class="update-dot"></span>
       </button>
     </template>
@@ -103,6 +127,16 @@ onMounted(() => {
 <style scoped>
 :deep(.right-button) {
   gap: 4px;
+}
+
+.navLabel {
+  color: rgba(235, 235, 245, 0.55);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .nav-btn {

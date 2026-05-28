@@ -386,7 +386,9 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="gold-container">
-    <ModuleNavBar current="gold" />
+    <ModuleNavBar current="gold">
+      <template #navLabel>{{ t('gold') }}</template>
+    </ModuleNavBar>
 
     <div class="gold-content">
       <!-- 黄金卡片 (整合持仓) -->

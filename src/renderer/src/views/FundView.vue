@@ -416,7 +416,9 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="fund-container">
-    <ModuleNavBar current="fund" />
+    <ModuleNavBar current="fund">
+      <template #navLabel>{{ t('fund') }}</template>
+    </ModuleNavBar>
 
     <div class="table-container">
       <table class="fund-table">

@@ -2,6 +2,7 @@ export default {
   // Setting.vue
   goBack: 'Back',
   about: 'About',
+  settings: 'Settings',
   alwaysOnTop: 'Always On Top',
   topBall: 'Ball',
   topWindow: 'MainWindow',
@@ -66,6 +67,7 @@ export default {
   whatsNew: "What's New",
 
   // MainList.vue
+  stock: 'Stock',
   name: 'Stock Name',
   code: 'Stock Code',
   currentPrice: 'Current Price',
@@ -101,7 +103,7 @@ export default {
   labelH: 'H:',
   noStocks: 'no stocks',
   backToBall: 'Back to ball',
-  goToSetting: 'Go to setting page',
+  goToSetting: 'settings',
   deleteSelected: 'Delete Selected',
   clearAll: 'Clear All',
   dailyPnlTotal: 'Daily PnL Total',
@@ -113,9 +115,6 @@ export default {
   allCleared: 'All Stocks Cleared',
   positionUpdated: 'Position Updated',
   amountCannotBeNegative: 'Position cannot be negative',
-  switchToGold: 'Switch to Gold',
-  switchToStock: 'Switch to Stock',
-  switchToFund: 'Switch to Fund',
 
   // Price Alert
   priceAlert: 'Price Alert',
@@ -165,6 +164,7 @@ export default {
   dragToMove: 'Drag to move, left click to expand, right click for menu',
 
   // GoldView.vue
+  gold: 'Gold',
   metalGold: 'Gold',
   metalSilver: 'Silver',
   fetchError: 'Fetch failed, retrying...',
@@ -201,6 +201,7 @@ export default {
   toggleCurrency: 'Toggle Currency',
 
   // FundView.vue
+  fund: 'Fund',
   thFundName: 'Name',
   thNav: 'NAV',
   thPnl: 'PnL',

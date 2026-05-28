@@ -65,6 +65,9 @@ onBeforeUnmount(() => {
     <div class="nav-button left-button">
       <slot name="left"></slot>
     </div>
+    <div class="navLabelArea">
+      <slot name="navLabel"></slot>
+    </div>
     <div class="drag-area" @mousedown="onMouseDown">
       <div class="drag-bar"></div>
     </div>
@@ -127,6 +130,18 @@ onBeforeUnmount(() => {
 .left-button {
   position: absolute;
   left: 0;
+}
+
+.navLabelArea {
+  position: absolute;
+  left: 24px;
+  right: calc(50% + 26px);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  min-width: 0;
 }
 
 .right-button {

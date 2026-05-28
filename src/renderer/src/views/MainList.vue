@@ -1073,7 +1073,9 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="main-list-container">
-    <ModuleNavBar current="stock" />
+    <ModuleNavBar current="stock">
+      <template #navLabel>{{ t('stock') }}</template>
+    </ModuleNavBar>
     <div class="table-container">
       <table class="stock-table">
         <thead>

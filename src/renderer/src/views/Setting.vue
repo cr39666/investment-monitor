@@ -290,6 +290,9 @@ onUnmounted(() => {
       <template #left>
         <button class="nav-btn" :title="t('goBack')" @click="goBack">⬅️</button>
       </template>
+      <template #navLabel>
+        <span class="navLabel">{{ t('settings') }}</span>
+      </template>
       <template #right>
         <button class="nav-btn" :title="t('about')" @click="goToAbout">ℹ️</button>
       </template>
@@ -520,6 +523,16 @@ onUnmounted(() => {
   margin: 16px; /* 给阴影留出空间 */
   color: #eee;
   display: inline-block;
+}
+
+.navLabel {
+  color: rgba(235, 235, 245, 0.55);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .nav-btn {

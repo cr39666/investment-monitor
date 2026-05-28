@@ -2,6 +2,7 @@ export default {
   // Setting.vue
   goBack: 'Back',
   about: 'About',
+  settings: 'Settings',
   alwaysOnTop: 'Always On Top',
   topBall: '悬浮球',
   topWindow: '主窗口',
@@ -65,6 +66,7 @@ export default {
   whatsNew: "更新内容 What's New",
 
   // MainList.vue
+  stock: 'Stock',
   name: '股票名称',
   code: 'Stock Code',
   currentPrice: '当前价',
@@ -98,7 +100,7 @@ export default {
   labelH: 'H:',
   noStocks: '暂无股票',
   backToBall: '返回悬浮球',
-  goToSetting: '前往设置页面',
+  goToSetting: '设置',
   deleteSelected: '删除选中 Delete',
   clearAll: '清空列表 Clear',
   dailyPnlTotal: '当日盈亏合计 Daily Total',
@@ -110,9 +112,6 @@ export default {
   allCleared: '已清空所有股票',
   positionUpdated: '持仓已更新',
   amountCannotBeNegative: '持仓手数不能小于0',
-  switchToGold: '切换到黄金',
-  switchToStock: '切换到股票',
-  switchToFund: '切换到基金',
 
   // Price Alert
   priceAlert: '价格提醒',
@@ -162,6 +161,7 @@ export default {
   dragToMove: '拖拽移动，左击展开，右击菜单',
 
   // GoldView.vue
+  gold: 'Gold',
   metalGold: 'XAU',
   metalSilver: 'XAG',
   fetchError: '数据拉取失败，重试中...',
@@ -198,6 +198,7 @@ export default {
   toggleCurrency: '切换货币',
 
   // FundView.vue
+  fund: 'Fund',
   thFundName: 'Name',
   thNav: 'NAV',
   thPnl: 'PnL',
