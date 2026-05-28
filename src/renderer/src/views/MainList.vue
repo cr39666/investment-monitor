@@ -1088,9 +1088,11 @@ onUnmounted(() => {
                 <span class="th-text" @click="toggleNameDisplayMode">{{
                   nameDisplayMode === 0 ? t('thName') : t('thCode')
                 }}</span>
-                <span class="sort-icon" @click="toggleSort('name')">{{
-                  sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-                }}</span>
+                <span
+                  :class="['sort-icon', { 'sort-active': sortColumn === 'name' }]"
+                  @click="toggleSort('name')"
+                  >{{ sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                >
               </th>
 
               <!-- price (+ split chg) -->
@@ -1121,7 +1123,10 @@ onUnmounted(() => {
                     }}</span
                   >
                   <span
-                    class="sort-icon"
+                    :class="[
+                      'sort-icon',
+                      { 'sort-active': sortColumn === 'curPrice' || sortColumn === 'change' }
+                    ]"
                     @click="
                       toggleSort(splitChg ? 'curPrice' : priceDisplayMode === 1 ? 'change' : 'curPrice')
                     "
@@ -1136,9 +1141,11 @@ onUnmounted(() => {
                 </th>
                 <th v-if="splitChg" :title="t('change')" class="clickable-th col-num">
                   <span class="th-text-static">{{ t('thChg') }}</span>
-                  <span class="sort-icon" @click="toggleSort('change')">{{
-                    sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-                  }}</span>
+                  <span
+                    :class="['sort-icon', { 'sort-active': sortColumn === 'change' }]"
+                    @click="toggleSort('change')"
+                    >{{ sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                  >
                 </th>
               </template>
 
@@ -1169,15 +1176,19 @@ onUnmounted(() => {
                             : t('thDPnlBoth')
                     }}</span
                   >
-                  <span class="sort-icon" @click="toggleSort('dpnl')">{{
-                    sortColumn === 'dpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-                  }}</span>
+                  <span
+                    :class="['sort-icon', { 'sort-active': sortColumn === 'dpnl' }]"
+                    @click="toggleSort('dpnl')"
+                    >{{ sortColumn === 'dpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                  >
                 </th>
                 <th v-if="splitDpnl" :title="t('dailyPnlPercent')" class="clickable-th col-num">
                   <span class="th-text-static">{{ t('thDPnlPct') }}</span>
-                  <span class="sort-icon" @click="toggleSort('dpnlPct')">{{
-                    sortColumn === 'dpnlPct' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-                  }}</span>
+                  <span
+                    :class="['sort-icon', { 'sort-active': sortColumn === 'dpnlPct' }]"
+                    @click="toggleSort('dpnlPct')"
+                    >{{ sortColumn === 'dpnlPct' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                  >
                 </th>
               </template>
 
@@ -1208,15 +1219,19 @@ onUnmounted(() => {
                             : t('thTPnlBoth')
                     }}</span
                   >
-                  <span class="sort-icon" @click="toggleSort('tpnl')">{{
-                    sortColumn === 'tpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-                  }}</span>
+                  <span
+                    :class="['sort-icon', { 'sort-active': sortColumn === 'tpnl' }]"
+                    @click="toggleSort('tpnl')"
+                    >{{ sortColumn === 'tpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                  >
                 </th>
                 <th v-if="splitPnl" :title="t('totalPnlPercent')" class="clickable-th col-num">
                   <span class="th-text-static">{{ t('thTPnlPct') }}</span>
-                  <span class="sort-icon" @click="toggleSort('tpnlPct')">{{
-                    sortColumn === 'tpnlPct' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-                  }}</span>
+                  <span
+                    :class="['sort-icon', { 'sort-active': sortColumn === 'tpnlPct' }]"
+                    @click="toggleSort('tpnlPct')"
+                    >{{ sortColumn === 'tpnlPct' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                  >
                 </th>
               </template>
 
@@ -1247,15 +1262,19 @@ onUnmounted(() => {
                             : t('thAvgVal')
                     }}</span
                   >
-                  <span class="sort-icon" @click="toggleSort('avg')">{{
-                    sortColumn === 'avg' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-                  }}</span>
+                  <span
+                    :class="['sort-icon', { 'sort-active': sortColumn === 'avg' }]"
+                    @click="toggleSort('avg')"
+                    >{{ sortColumn === 'avg' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                  >
                 </th>
                 <th v-if="splitVal" :title="t('marketValue')" class="clickable-th col-avg">
                   <span class="th-text-static">{{ t('thVal') }}</span>
-                  <span class="sort-icon" @click="toggleSort('marketVal')">{{
-                    sortColumn === 'marketVal' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'
-                  }}</span>
+                  <span
+                    :class="['sort-icon', { 'sort-active': sortColumn === 'marketVal' }]"
+                    @click="toggleSort('marketVal')"
+                    >{{ sortColumn === 'marketVal' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                  >
                 </th>
               </template>
 
@@ -1819,16 +1838,23 @@ onUnmounted(() => {
 }
 
 .th-text {
+  position: relative;
   cursor: pointer;
+  text-decoration: underline dotted color-mix(in srgb, var(--ev-c-pink) 70%, transparent);
+  text-underline-offset: 2px;
+  display: inline-block;
   transition:
     color 0.2s,
-    text-decoration 0.2s;
-  border-bottom: 1px dashed transparent;
+    text-shadow 0.2s,
+    text-decoration-color 0.2s,
+    transform 0.2s;
 }
 
 .th-text:hover {
-  color: #fff !important;
-  border-bottom-color: rgba(255, 255, 255, 0.5);
+  color: var(--ev-c-pink);
+  text-decoration-color: transparent;
+  text-shadow: 0 0 5px color-mix(in srgb, var(--ev-c-pink) 55%, transparent);
+  transform: scale(1.08);
 }
 
 .th-text-static {
@@ -1837,12 +1863,12 @@ onUnmounted(() => {
 
 .sort-icon {
   font-size: 10px;
-  opacity: 0.4;
+  opacity: 0.55;
   margin-left: 2px;
   cursor: pointer;
   display: inline-block;
   width: 10px;
-  color: var(--ev-c-green);
+  color: #fff;
   transition:
     opacity 0.2s,
     transform 0.2s,
@@ -1850,14 +1876,15 @@ onUnmounted(() => {
   vertical-align: middle;
 }
 
-.sort-icon:hover {
+.sort-icon:hover,
+.sort-icon.sort-active {
   opacity: 1;
   transform: scale(1.5);
-  color: #fff;
+  color: var(--ev-c-pink);
 }
 
-.clickable-th:hover .sort-icon {
-  opacity: 0.7;
+.clickable-th:hover .sort-icon:not(.sort-active) {
+  opacity: 0.8;
 }
 
 .clear-all-btn {
@@ -2019,8 +2046,7 @@ onUnmounted(() => {
 }
 
 .clickable-cell .clickable-tag {
-  /* 股数 tag 样式维持绿色 */
-  color: var(--ev-c-green);
+  color: #c084fc;
 }
 
 /* 价格提醒样式 - 黄色系 */

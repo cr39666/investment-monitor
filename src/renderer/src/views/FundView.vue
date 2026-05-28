@@ -423,68 +423,55 @@ onUnmounted(() => {
         <thead>
           <tr>
             <template v-for="key in columnOrder" :key="`fth-${key}`">
-              <th
-                v-if="key === 'name'"
-                :title="t('name')"
-                class="clickable-th col-name"
-                @click="toggleSort('name')"
-              >
-                {{ t('thFundName') }}
-                <span class="sort-icon">{{
-                  sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-                }}</span>
+              <th v-if="key === 'name'" :title="t('name')" class="clickable-th col-name">
+                <span class="th-text" @click.stop="toggleSort('name')">{{ t('thFundName') }}</span>
+                <span
+                  :class="['sort-icon', { 'sort-active': sortColumn === 'name' }]"
+                  @click.stop="toggleSort('name')"
+                  >{{ sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                >
               </th>
-              <th
-                v-else-if="key === 'nav'"
-                :title="t('fundNav')"
-                class="clickable-th col-num"
-                @click="toggleSort('nav')"
-              >
-                {{ t('thNav') }}
-                <span class="sort-icon">{{
-                  sortColumn === 'nav' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-                }}</span>
+              <th v-else-if="key === 'nav'" :title="t('fundNav')" class="clickable-th col-num">
+                <span class="th-text" @click.stop="toggleSort('nav')">{{ t('thNav') }}</span>
+                <span
+                  :class="['sort-icon', { 'sort-active': sortColumn === 'nav' }]"
+                  @click.stop="toggleSort('nav')"
+                  >{{ sortColumn === 'nav' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                >
               </th>
-              <th
-                v-else-if="key === 'pnl'"
-                :title="t('totalPnl')"
-                class="clickable-th col-num"
-                @click="toggleSort('pnl')"
-              >
-                {{ t('thPnl') }}
-                <span class="sort-icon">{{
-                  sortColumn === 'pnl' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-                }}</span>
+              <th v-else-if="key === 'pnl'" :title="t('totalPnl')" class="clickable-th col-num">
+                <span class="th-text" @click.stop="toggleSort('pnl')">{{ t('thPnl') }}</span>
+                <span
+                  :class="['sort-icon', { 'sort-active': sortColumn === 'pnl' }]"
+                  @click.stop="toggleSort('pnl')"
+                  >{{ sortColumn === 'pnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                >
               </th>
-              <th
-                v-else-if="key === 'chg'"
-                :title="t('change')"
-                class="clickable-th col-num"
-                @click="toggleSort('chg')"
-              >
-                {{ t('thFundChg') }}
-                <span class="sort-icon">{{
-                  sortColumn === 'chg' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-                }}</span>
+              <th v-else-if="key === 'chg'" :title="t('change')" class="clickable-th col-num">
+                <span class="th-text" @click.stop="toggleSort('chg')">{{ t('thFundChg') }}</span>
+                <span
+                  :class="['sort-icon', { 'sort-active': sortColumn === 'chg' }]"
+                  @click.stop="toggleSort('chg')"
+                  >{{ sortColumn === 'chg' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                >
               </th>
-              <th
-                v-else-if="key === 'yield'"
-                :title="t('yieldRate')"
-                class="clickable-th col-num"
-                @click="toggleSort('yield')"
-              >
-                {{ t('thYield') }}
-                <span class="sort-icon">{{
-                  sortColumn === 'yield' ? (sortOrder === 'asc' ? '↑' : '↓') : ''
-                }}</span>
+              <th v-else-if="key === 'yield'" :title="t('yieldRate')" class="clickable-th col-num">
+                <span class="th-text" @click.stop="toggleSort('yield')">{{ t('thYield') }}</span>
+                <span
+                  :class="['sort-icon', { 'sort-active': sortColumn === 'yield' }]"
+                  @click.stop="toggleSort('yield')"
+                  >{{ sortColumn === 'yield' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
+                >
               </th>
               <th
                 v-else-if="key === 'last'"
                 :title="lastColMode === 0 ? t('holdingDays') : t('marketValue')"
                 class="clickable-th col-last"
-                @click="toggleLastColMode"
               >
-                {{ lastColMode === 0 ? t('thDays') : t('thFundVal') }} <span class="toggle-icon">🔁</span>
+                <span class="th-text" @click.stop="toggleLastColMode">{{
+                  lastColMode === 0 ? t('thDays') : t('thFundVal')
+                }}</span>
+                <span class="toggle-icon" @click.stop="toggleLastColMode">🔁</span>
               </th>
             </template>
           </tr>
@@ -671,30 +658,54 @@ onUnmounted(() => {
 }
 
 .clickable-th {
-  cursor: pointer;
+  cursor: default;
   user-select: none;
-  transition: color 0.3s;
   white-space: nowrap;
 }
 .clickable-th:hover {
-  color: #fff !important;
+  color: #ccc;
 }
-.toggle-icon {
-  font-size: 10px;
-  opacity: 0.5;
-  margin-left: 1px;
+.th-text {
+  position: relative;
+  cursor: pointer;
+  text-decoration: underline dotted color-mix(in srgb, var(--ev-c-pink) 70%, transparent);
+  text-underline-offset: 2px;
+  display: inline-block;
+  transition:
+    color 0.2s,
+    text-shadow 0.2s,
+    text-decoration-color 0.2s,
+    transform 0.2s;
 }
+.th-text:hover,
+.clickable-th:hover .th-text {
+  color: var(--ev-c-pink);
+  text-decoration-color: transparent;
+  text-shadow: 0 0 5px color-mix(in srgb, var(--ev-c-pink) 55%, transparent);
+  transform: scale(1.08);
+}
+.toggle-icon,
 .sort-icon {
   font-size: 10px;
-  opacity: 0.5;
+  opacity: 0.55;
   margin-left: 1px;
+  cursor: pointer;
   display: inline-block;
   width: 8px;
-  color: var(--ev-c-green);
+  color: #fff;
+  transition:
+    opacity 0.2s,
+    transform 0.2s,
+    color 0.2s;
 }
 .clickable-th:hover .toggle-icon,
-.clickable-th:hover .sort-icon {
+.clickable-th:hover .sort-icon,
+.toggle-icon:hover,
+.sort-icon:hover,
+.sort-icon.sort-active {
   opacity: 1;
+  transform: scale(1.5);
+  color: var(--ev-c-pink);
 }
 
 .clickable-tag {
