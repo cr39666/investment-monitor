@@ -133,6 +133,9 @@ export default {
 
   // Modal.vue
   initialCost: 'Initial Cost',
+  initialCostTipTitle: 'Initial Cost Tip',
+  initialCostTipMessage:
+    'Decimal differences from the actual cost may affect Total PnL. More lots may cause larger deviations.',
   tradePrice: '💰Trade Price',
   lotsHint: 'Lots (1 lot = 100 shares)',
   deltaLots: '🖐️Delta Lots',

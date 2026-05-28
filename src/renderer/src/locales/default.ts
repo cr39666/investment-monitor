@@ -130,6 +130,9 @@ export default {
 
   // Modal.vue
   initialCost: '初始成本',
+  initialCostTipTitle: '初始成本提示',
+  initialCostTipMessage:
+    '由于此处输入成本与“实际成本”小数位差异，故计算出的【总盈亏】结果可能会有偏差，【手数】越多偏差相应越大，望知悉',
   tradePrice: '💰成交价格',
   lotsHint: '手数(1手=100股)',
   deltaLots: '🖐️变动手数',

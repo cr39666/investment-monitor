@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick, computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Confirm from './Confirm.vue'
 
 const { t } = useI18n()
 const isVisible = ref(false)
@@ -19,6 +20,8 @@ let shakeTimer: ReturnType<typeof setTimeout> | null = null
 let resolvePromise: ((value: any) => void) | null = null
 
 const priceInput = ref<HTMLInputElement | null>(null)
+const initialCostConfirmRef = ref<InstanceType<typeof Confirm> | null>(null)
+const isInitialCostTipOpen = ref(false)
 
 // 解析 modalMessage 中的股票名称和当前价格
 const parsedMessage = computed(() => {
@@ -37,11 +40,22 @@ const parsedMessage = computed(() => {
   return { stockName: modalMessage.value, currentPrice: null }
 })
 
+const showInitialCostTip = async () => {
+  if (isInitialCostTipOpen.value) return
+  isInitialCostTipOpen.value = true
+  try {
+    await initialCostConfirmRef.value?.open(t('initialCostTipTitle'), t('initialCostTipMessage'))
+  } finally {
+    isInitialCostTipOpen.value = false
+    nextTick(() => priceInput.value?.focus())
+  }
+}
+
 // 当前价格是否上涨（需要从外部传入涨跌信息）
 const isPriceUp = ref<boolean | null>(null)
 
 const handleKeydown = (e: KeyboardEvent) => {
-  if (!isVisible.value) return
+  if (!isVisible.value || isInitialCostTipOpen.value) return
   if (e.key === 'Enter') {
     // 在 textarea / 中文输入法 composing 时不拦截
     const target = e.target as HTMLElement | null
@@ -262,7 +276,19 @@ defineExpose({ open })
                   class="modal-input"
                   step="0.001"
                 />
-                <label>{{ modalType === 'add' ? t('initialCost') : t('tradePrice') }}</label>
+                <div class="modal-input-label">
+                  <label>{{ modalType === 'add' ? t('initialCost') : t('tradePrice') }}</label>
+                  <button
+                    v-if="modalType === 'add'"
+                    type="button"
+                    class="info-icon-btn"
+                    :title="t('initialCostTipTitle')"
+                    :aria-label="t('initialCostTipTitle')"
+                    @click.stop="showInitialCostTip"
+                  >
+                    i
+                  </button>
+                </div>
               </div>
               <!-- 添加模式或有持仓时显示手数输入（清仓不需要） -->
               <div v-if="modalType === 'add' || tradeDirection !== 'clear'" class="modal-input-group">
@@ -314,6 +340,7 @@ defineExpose({ open })
       </div>
     </div>
   </Teleport>
+  <Confirm ref="initialCostConfirmRef" />
 </template>
 
 <style scoped>
@@ -447,9 +474,36 @@ defineExpose({ open })
   gap: 5px;
 }
 
+.modal-input-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .modal-input-group label {
   font-size: 11px;
   color: #888;
+}
+
+.info-icon-btn {
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 12px;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.info-icon-btn:hover {
+  border-color: #2ecc71;
+  color: #2ecc71;
+  background-color: rgba(46, 204, 113, 0.12);
 }
 
 .modal-stock-name {
