@@ -225,29 +225,29 @@ const toggleNameDisplayMode = () => {
   localStorage.setItem('stock_nameDisplayMode', String(nameDisplayMode.value))
 }
 
-// Price 列展示模式：0=现价, 1=涨跌幅, 2=现价/涨跌幅（默认双显）
-const priceDisplayMode = ref(parseInt(localStorage.getItem('stock_priceDisplayMode') || '2'))
+// Price 列展示模式：0=现价, 1=涨跌幅, 2=现价/涨跌幅
+const priceDisplayMode = ref(parseInt(localStorage.getItem('stock_priceDisplayMode') || '0'))
 const togglePriceDisplayMode = () => {
   priceDisplayMode.value = (priceDisplayMode.value + 1) % 3
   localStorage.setItem('stock_priceDisplayMode', String(priceDisplayMode.value))
 }
 
-// D.PnL 列展示模式：0=当日盈亏额, 1=当日盈亏比(%), 2=盈亏额/盈亏比（默认双显）
-const dpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_dpnlDisplayMode') || '2'))
+// D.PnL 列展示模式：0=当日盈亏额, 1=当日盈亏比(%), 2=盈亏额/盈亏比
+const dpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_dpnlDisplayMode') || '0'))
 const toggleDpnlDisplayMode = () => {
   dpnlDisplayMode.value = (dpnlDisplayMode.value + 1) % 3
   localStorage.setItem('stock_dpnlDisplayMode', String(dpnlDisplayMode.value))
 }
 
-// T.PnL 列展示模式：0=总盈亏额, 1=总盈亏比(%), 2=盈亏额/盈亏比（默认双显）
-const tpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_tpnlDisplayMode') || '2'))
+// T.PnL 列展示模式：0=总盈亏额, 1=总盈亏比(%), 2=盈亏额/盈亏比
+const tpnlDisplayMode = ref(parseInt(localStorage.getItem('stock_tpnlDisplayMode') || '0'))
 const toggleTpnlDisplayMode = () => {
   tpnlDisplayMode.value = (tpnlDisplayMode.value + 1) % 3
   localStorage.setItem('stock_tpnlDisplayMode', String(tpnlDisplayMode.value))
 }
 
-// Avg 列展示模式：0=均摊成本, 1=持仓市值, 2=成本/市值（默认双显）
-const avgDisplayMode = ref(parseInt(localStorage.getItem('stock_avgDisplayMode') || '2'))
+// Avg 列展示模式：0=均摊成本, 1=持仓市值, 2=成本/市值
+const avgDisplayMode = ref(parseInt(localStorage.getItem('stock_avgDisplayMode') || '0'))
 const toggleAvgDisplayMode = () => {
   avgDisplayMode.value = (avgDisplayMode.value + 1) % 3
   localStorage.setItem('stock_avgDisplayMode', String(avgDisplayMode.value))
