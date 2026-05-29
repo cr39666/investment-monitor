@@ -199,6 +199,9 @@ export default {
   collapseGoldHolding: 'Collapse Gold Holding',
   clickToTogglePnL: 'Click to toggle PnL display',
   toggleCurrency: 'Toggle Currency',
+  goldPriceNoticeTitle: 'Price Note',
+  goldPriceNotice:
+    'Displayed prices are international gold/silver prices and may differ from domestic real-time prices.',
 
   // FundView.vue
   fund: 'Fund',

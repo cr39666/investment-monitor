@@ -235,6 +235,10 @@ const openClearModal = async () => {
   }
 }
 
+const showPriceNotice = async () => {
+  await confirmClearRef.value?.open(t('goldPriceNoticeTitle'), t('goldPriceNotice'))
+}
+
 const confirmClear = () => {
   goldHolding.value = null
   localStorage.removeItem('gold_holding')
@@ -509,6 +513,9 @@ onUnmounted(() => {
           <span class="fetch-error-icon">⚠</span>
           <span v-if="!isHoldingDrawerOpen" class="fetch-error-msg">{{ t('fetchError') }}</span>
         </span>
+        <button class="price-notice-btn" :title="t('goldPriceNoticeTitle')" @click="showPriceNotice">
+          i
+        </button>
       </div>
     </div>
 
@@ -867,6 +874,32 @@ onUnmounted(() => {
 
 .currency-toggle-btn:hover {
   color: #fff;
+}
+
+.price-notice-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(235, 235, 245, 0.6);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 16px;
+  transition: all 0.2s ease;
+}
+
+.price-notice-btn:hover {
+  color: #f0d060;
+  border-color: rgba(255, 215, 0, 0.35);
+  background: rgba(255, 215, 0, 0.12);
+  transform: scale(1.08);
+}
+
+.price-notice-btn:active {
+  transform: scale(0.96);
 }
 
 .fetch-error-text {

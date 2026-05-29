@@ -197,6 +197,8 @@ export default {
   collapseGoldHolding: '收起黄金持仓',
   clickToTogglePnL: '点击切换盈亏显示',
   toggleCurrency: '切换货币',
+  goldPriceNoticeTitle: '价格说明',
+  goldPriceNotice: '显示价格为国际金/银价，与国内实时价格会有偏差，望知悉',
 
   // FundView.vue
   fund: '基金',
