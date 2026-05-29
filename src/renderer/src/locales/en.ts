@@ -83,6 +83,7 @@ export default {
   avgBuyPrice: 'Avg. Buy Price',
   marketValue: 'Market Value',
   change: 'Change',
+  changeAmount: 'Change Amount',
   amount: 'Amount',
 
   // Table headers
@@ -91,6 +92,7 @@ export default {
   stockCode: 'Stock Code',
   thPrice: 'Price',
   thChg: 'Chg%',
+  thChangeAmount: 'Chg',
   thPriceChg: 'P/Chg%',
   thDPnl: 'D.PnL',
   thDPnlPct: 'D.PnL%',
@@ -106,6 +108,8 @@ export default {
   labelD: 'D:',
   labelH: 'H:',
   noStocks: 'no stocks',
+  noWatchStocks: 'no watch stocks',
+  watchStockCode: 'Watch Code',
   backToBall: 'Back to ball',
   goToSetting: 'settings',
   deleteSelected: 'Delete Selected',
@@ -115,10 +119,15 @@ export default {
   clickToAdjust: 'Click to adjust quantity',
   stockExists: 'Stock already exists',
   stockAdded: 'Stock Added!',
+  watchStockExists: 'Watch stock already exists',
+  watchStockAdded: 'Watch Stock Added!',
   selectedRemoved: 'Selected Stocks Removed',
   allCleared: 'All Stocks Cleared',
   positionUpdated: 'Position Updated',
   amountCannotBeNegative: 'Position cannot be negative',
+  switchToWatchStocks: 'Switch to Watchlist',
+  switchToHoldings: 'Switch to Holdings',
+  clearWatchConfirm: 'Are you sure you want to clear all watch stocks?',
 
   // Price Alert
   priceAlert: 'Price Alert',

@@ -29,6 +29,12 @@ interface StockItem {
   dailyBasis?: number
 }
 
+interface WatchStockItem {
+  code: string
+}
+
+type StockPageMode = 'holding' | 'watch'
+
 // 价格提醒
 interface PriceAlert {
   targetPrice: number // 目标价格
@@ -48,6 +54,10 @@ interface StockQuote {
 
 const inputCode = ref('')
 const stocks = ref<StockItem[]>([])
+const watchStocks = ref<WatchStockItem[]>([])
+const stockPageMode = ref<StockPageMode>(
+  (localStorage.getItem('stock_pageMode') as StockPageMode) || 'holding'
+)
 // 以 code 为 key 保存行情数据
 const quotes = ref<Record<string, StockQuote>>({})
 let timer: ReturnType<typeof setTimeout> | null = null
@@ -208,6 +218,14 @@ const displayStocks = computed(() => {
   })
 })
 
+const displayWatchStocks = computed(() => {
+  return [...watchStocks.value].sort((a, b) => {
+    const nameA = quotes.value[a.code]?.name || a.code
+    const nameB = quotes.value[b.code]?.name || b.code
+    return nameA.localeCompare(nameB, 'zh-CN')
+  })
+})
+
 // Name 这一列单行显示代码还是名称展示的追踪列表
 const shownCodes = ref<string[]>([])
 const toggleNameDisplay = (code: string) => {
@@ -262,13 +280,23 @@ const toggleSummaryPnlMode = () => {
 
 // 选中的行代码（多选）
 const selectedCodes = ref<string[]>([])
+const selectedWatchCodes = ref<string[]>([])
 const toggleRowSelection = (code: string) => {
-  const index = selectedCodes.value.indexOf(code)
+  const selected = stockPageMode.value === 'holding' ? selectedCodes : selectedWatchCodes
+  const index = selected.value.indexOf(code)
   if (index > -1) {
-    selectedCodes.value.splice(index, 1)
+    selected.value.splice(index, 1)
   } else {
-    selectedCodes.value.push(code)
+    selected.value.push(code)
   }
+}
+
+const toggleStockPageMode = () => {
+  stockPageMode.value = stockPageMode.value === 'holding' ? 'watch' : 'holding'
+  localStorage.setItem('stock_pageMode', stockPageMode.value)
+  selectedCodes.value = []
+  selectedWatchCodes.value = []
+  nextTick(() => stockInputRef.value?.focus())
 }
 
 // --- 组件引用 ---
@@ -307,6 +335,21 @@ const loadStocks = () => {
     } catch (e) {
       console.error('Failed to parse saved stocks', e)
     }
+  }
+}
+
+const loadWatchStocks = () => {
+  const saved = localStorage.getItem('watch_stocks')
+  if (!saved) return
+  try {
+    const parsed = JSON.parse(saved)
+    if (Array.isArray(parsed)) {
+      watchStocks.value = parsed
+        .map((item) => (typeof item === 'string' ? { code: item } : item))
+        .filter((item): item is WatchStockItem => !!item?.code)
+    }
+  } catch (e) {
+    console.error('Failed to parse watch stocks', e)
   }
 }
 
@@ -373,12 +416,12 @@ const saveStocks = () => {
   localStorage.setItem('my_stocks', JSON.stringify(stocks.value))
 }
 
-// 添加股票
-const addStock = async () => {
-  let code = inputCode.value.trim().toLowerCase()
-  if (!code) return
+const saveWatchStocks = () => {
+  localStorage.setItem('watch_stocks', JSON.stringify(watchStocks.value))
+}
 
-  // 自动根据6位纯数字代码补齐市场前缀
+const normalizeStockCode = (rawCode: string): string => {
+  let code = rawCode.trim().toLowerCase()
   if (/^\d{6}$/.test(code)) {
     if (code.startsWith('6') || code.startsWith('5') || code.startsWith('7') || code.startsWith('9')) {
       code = 'sh' + code
@@ -390,6 +433,13 @@ const addStock = async () => {
       code = 'sz' + code
     }
   }
+  return code
+}
+
+// 添加股票
+const addStock = async () => {
+  const code = normalizeStockCode(inputCode.value)
+  if (!code) return
 
   if (stocks.value.some((s) => s.code === code)) {
     toastRef.value?.show(t('stockExists'), 'warn')
@@ -425,6 +475,29 @@ const addStock = async () => {
   }
   // 无论确认还是取消，都把焦点恢复到输入框，方便连续输入
   nextTick(() => stockInputRef.value?.focus())
+}
+
+const addWatchStock = async () => {
+  const code = normalizeStockCode(inputCode.value)
+  if (!code) return
+
+  if (watchStocks.value.some((s) => s.code === code)) {
+    toastRef.value?.show(t('watchStockExists'), 'warn')
+    return
+  }
+
+  await fetchQuotesByCode(code)
+  watchStocks.value.push({ code })
+  saveWatchStocks()
+  inputCode.value = ''
+  fetchQuotes(true)
+  toastRef.value?.show(t('watchStockAdded'), 'success')
+  nextTick(() => stockInputRef.value?.focus())
+}
+
+const handleAddAction = () => {
+  if (stockPageMode.value === 'holding') addStock()
+  else addWatchStock()
 }
 
 // 单独获取行情（辅助addStock）
@@ -473,27 +546,74 @@ const fetchQuotesByCode = (code: string): Promise<void> => {
   })
 }
 
+const removeUnusedQuotes = (codes: string[]) => {
+  codes.forEach((code) => {
+    const stillUsed =
+      stocks.value.some((s) => s.code === code) || watchStocks.value.some((s) => s.code === code)
+    if (!stillUsed) delete quotes.value[code]
+  })
+  cacheQuotes()
+}
+
 // 移除/清空股票逻辑
 const handleDeleteAction = async () => {
+  if (stockPageMode.value === 'watch') {
+    if (selectedWatchCodes.value.length > 0) {
+      const codesToRemove = [...selectedWatchCodes.value]
+      const confirmed = await confirmRef.value?.open(
+        t('deleteStock'),
+        t('deleteConfirm', { count: codesToRemove.length })
+      )
+      if (confirmed) {
+        watchStocks.value = watchStocks.value.filter((s) => !codesToRemove.includes(s.code))
+        selectedWatchCodes.value = []
+        shownCodes.value = shownCodes.value.filter((code) => !codesToRemove.includes(code))
+        saveWatchStocks()
+        removeUnusedQuotes(codesToRemove)
+        toastRef.value?.show(t('selectedRemoved'), 'info')
+      }
+    } else {
+      if (watchStocks.value.length === 0) return
+      const codesToRemove = watchStocks.value.map((s) => s.code)
+      const confirmed = await confirmRef.value?.open(t('clearList'), t('clearWatchConfirm'))
+      if (confirmed) {
+        watchStocks.value = []
+        selectedWatchCodes.value = []
+        shownCodes.value = shownCodes.value.filter((code) => !codesToRemove.includes(code))
+        saveWatchStocks()
+        removeUnusedQuotes(codesToRemove)
+        toastRef.value?.show(t('allCleared'), 'warn')
+      }
+    }
+    return
+  }
+
   if (selectedCodes.value.length > 0) {
     // 批量删除已选项
+    const codesToRemove = [...selectedCodes.value]
     const confirmed = await confirmRef.value?.open(
       t('deleteStock'),
-      t('deleteConfirm', { count: selectedCodes.value.length })
+      t('deleteConfirm', { count: codesToRemove.length })
     )
     if (confirmed) {
-      stocks.value = stocks.value.filter((s) => !selectedCodes.value.includes(s.code))
+      stocks.value = stocks.value.filter((s) => !codesToRemove.includes(s.code))
       selectedCodes.value = []
+      shownCodes.value = shownCodes.value.filter((code) => !codesToRemove.includes(code))
       saveStocks()
+      removeUnusedQuotes(codesToRemove)
       toastRef.value?.show(t('selectedRemoved'), 'info')
     }
   } else {
     // 清空所有股票（原逻辑）
     if (stocks.value.length === 0) return
+    const codesToRemove = stocks.value.map((s) => s.code)
     const confirmed = await confirmRef.value?.open(t('clearList'), t('clearConfirm'))
     if (confirmed) {
       stocks.value = []
+      selectedCodes.value = []
+      shownCodes.value = shownCodes.value.filter((code) => !codesToRemove.includes(code))
       saveStocks()
+      removeUnusedQuotes(codesToRemove)
       toastRef.value?.show(t('allCleared'), 'warn')
     }
   }
@@ -684,16 +804,21 @@ const isTradingTime = () => {
   return isMorning || isAfternoon
 }
 
+const getTrackedStockCodes = (): string[] => {
+  return Array.from(new Set([...stocks.value.map((s) => s.code), ...watchStocks.value.map((s) => s.code)]))
+}
+
 // 获取行情数据 (使用 JSONP 注入 script 标签，解决 GBK 编码跨域)
 const fetchQuotes = (force = false) => {
-  if (stocks.value.length === 0) return
+  const trackedCodes = getTrackedStockCodes()
+  if (trackedCodes.length === 0) return
 
   // 非交易时间且非强制刷新(初始化)时，跳过请求
   if (!force && !isTradingTime()) {
     return
   }
 
-  const codes = stocks.value.map((s) => s.code).join(',')
+  const codes = trackedCodes.join(',')
   const scriptId = 'jsonp-stock-script'
   let script = document.getElementById(scriptId) as HTMLScriptElement
 
@@ -707,7 +832,7 @@ const fetchQuotes = (force = false) => {
   script.src = `http://qt.gtimg.cn/q=${codes}&t=${Date.now()}`
 
   // 监听脚本加载完成
-  const stockCodes = stocks.value.map((s) => s.code)
+  const stockCodes = [...trackedCodes]
   const cleanupGlobals = () => {
     // 释放腾讯接口注入到 window 的 v_xxx 全局变量
     stockCodes.forEach((code) => {
@@ -719,15 +844,15 @@ const fetchQuotes = (force = false) => {
     })
   }
   script.onload = () => {
-    stocks.value.forEach((stock) => {
+    stockCodes.forEach((code) => {
       // 腾讯接口会在全局注入形如 v_sh600519 的变量
-      const varName = `v_${stock.code}`
+      const varName = `v_${code}`
       const dataStr = (window as any)[varName]
       if (dataStr) {
         const parts = dataStr.split('~')
         if (parts.length > 5) {
           const currentPrice = parseFloat(parts[3])
-          quotes.value[stock.code] = {
+          quotes.value[code] = {
             name: parts[1],
             currentPrice,
             yesterdayClose: parseFloat(parts[4]),
@@ -736,15 +861,16 @@ const fetchQuotes = (force = false) => {
             quoteDate: getTodayStr()
           }
 
+          const stock = stocks.value.find((s) => s.code === code)
           // 如果是新添加的股票，且成功获取到价格，则将成本价初始化为当前价
-          if (stock.isNew && currentPrice > 0) {
+          if (stock?.isNew && currentPrice > 0) {
             stock.cost = currentPrice
             stock.isNew = false
             saveStocks()
           }
 
           // 检查价格提醒
-          checkPriceAlerts(stock, currentPrice)
+          if (stock) checkPriceAlerts(stock, currentPrice)
         }
       }
     })
@@ -996,6 +1122,7 @@ const formatPriceAlerts = (stock: StockItem): string => {
 
 onMounted(async () => {
   loadStocks()
+  loadWatchStocks()
   resetDailyRealizedPnl() // 跨日清零当日已实现盈亏
 
   loadCachedQuotes() // 先加载缓存的行情数据，避免空白
@@ -1077,7 +1204,7 @@ onUnmounted(() => {
       <template #navLabel>{{ t('stock') }}</template>
     </ModuleNavBar>
     <div class="table-container">
-      <table class="stock-table">
+      <table v-if="stockPageMode === 'holding'" class="stock-table">
         <thead>
           <tr>
             <template v-for="key in columnOrder" :key="`th-${key}`">
@@ -1498,30 +1625,104 @@ onUnmounted(() => {
           </tr>
         </tbody>
       </table>
+      <table v-else class="stock-table watch-table">
+        <thead>
+          <tr>
+            <th :title="t('name')" class="col-name">{{ t('thName') }}</th>
+            <th :title="t('currentPrice')" class="col-price">{{ t('thPrice') }}</th>
+            <th :title="t('change')" class="col-num">{{ t('thChg') }}</th>
+            <th :title="t('changeAmount')" class="col-num">{{ t('thChangeAmount') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="stock in displayWatchStocks"
+            :key="stock.code"
+            :class="{ 'row-selected': selectedWatchCodes.includes(stock.code) }"
+            @click="toggleRowSelection(stock.code)"
+          >
+            <td
+              :class="['name-cell', (quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
+              :title="quotes[stock.code]?.name || stock.code"
+              @click.stop="toggleNameDisplay(stock.code)"
+            >
+              <div class="clickable-tag">
+                <span
+                  v-if="
+                    (nameDisplayMode === 0 && !shownCodes.includes(stock.code)) ||
+                    (nameDisplayMode === 1 && shownCodes.includes(stock.code))
+                  "
+                  >{{ formatName(quotes[stock.code]?.name) }}</span
+                >
+                <span v-else>{{ stock.code }}</span>
+              </div>
+            </td>
+            <td class="col-price" :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
+              {{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}
+            </td>
+            <td class="col-num" :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
+              <span v-if="quotes[stock.code]">
+                {{ quotes[stock.code].changePercent > 0 ? '+' : '' }}{{ quotes[stock.code].changePercent }}%
+              </span>
+              <span v-else>--</span>
+            </td>
+            <td class="col-num" :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
+              <span v-if="quotes[stock.code]">
+                {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
+                }}{{ quotes[stock.code].changeAmount.toFixed(2) }}
+              </span>
+              <span v-else>--</span>
+            </td>
+          </tr>
+          <tr v-if="watchStocks.length === 0">
+            <td colspan="4" class="empty-row">{{ t('noWatchStocks') }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="summary-section">
       <div class="bottom-actions">
+        <button
+          class="mode-btn stock-page-btn"
+          :title="stockPageMode === 'holding' ? t('switchToWatchStocks') : t('switchToHoldings')"
+          @click="toggleStockPageMode"
+        >
+          <span class="mode-icon">{{ stockPageMode === 'holding' ? '👀' : '📊' }}</span>
+        </button>
         <div class="input-group">
           <input
             ref="stockInputRef"
             v-model="inputCode"
-            :placeholder="t('code')"
+            :placeholder="stockPageMode === 'holding' ? t('code') : t('watchStockCode')"
             class="stock-input"
-            @keyup.enter="addStock"
+            @keyup.enter="handleAddAction"
           />
-          <button class="add-btn" @click="addStock"><span class="add-icon">➕</span></button>
+          <button class="add-btn" @click="handleAddAction"><span class="add-icon">➕</span></button>
           <button
-            v-if="stocks.length > 0"
+            v-if="stockPageMode === 'holding' ? stocks.length > 0 : watchStocks.length > 0"
             class="clear-all-btn"
-            :title="selectedCodes.length > 0 ? t('deleteSelected') : t('clearAll')"
+            :title="
+              (stockPageMode === 'holding' ? selectedCodes.length : selectedWatchCodes.length) > 0
+                ? t('deleteSelected')
+                : t('clearAll')
+            "
             @click="handleDeleteAction"
           >
-            <span class="clear-all-icon">{{ selectedCodes.length > 0 ? '🗑️' : '🧹' }}</span>
+            <span class="clear-all-icon">{{
+              (stockPageMode === 'holding' ? selectedCodes.length : selectedWatchCodes.length) > 0
+                ? '🗑️'
+                : '🧹'
+            }}</span>
           </button>
         </div>
       </div>
-      <div class="summary-pnl" :title="t('clickToTogglePnL')" @click="toggleSummaryPnlMode">
+      <div
+        v-if="stockPageMode === 'holding'"
+        class="summary-pnl"
+        :title="t('clickToTogglePnL')"
+        @click="toggleSummaryPnlMode"
+      >
         <span class="pnl-toggle-icon">🔄</span>
         <span
           v-if="summaryPnlMode === 0"
@@ -1709,6 +1910,10 @@ onUnmounted(() => {
 .stock-table td.col-qty,
 .stock-table td:last-child {
   text-align: center;
+}
+
+.watch-table {
+  min-width: 240px;
 }
 
 /* Price/Chg% 双行模式 */
