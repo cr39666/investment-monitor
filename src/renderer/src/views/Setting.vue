@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DragHandle from '../components/DragHandle.vue'
 import Toast from '../components/Toast.vue'
+import Confirm from '../components/Confirm.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import FeeSettingModal from '../components/FeeSettingModal.vue'
 import GoldFeeSettingModal from '../components/GoldFeeSettingModal.vue'
@@ -17,6 +18,7 @@ const { hasPendingUpdate, checkPendingUpdate } = useUpdateCheck()
 
 const containerRef = ref<HTMLElement | null>(null)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
+const confirmRef = ref<InstanceType<typeof Confirm> | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 const ballAlwaysOnTop = ref(true)
@@ -137,6 +139,31 @@ const toggleWindowAlwaysOnTop = () => {
 const changeBallDisplayMode = (mode: string) => {
   ballDisplayMode.value = mode
   localStorage.setItem('ball_display_mode', mode)
+}
+
+type ResetDataType = 'stock' | 'gold' | 'fund'
+
+const resetData = async (type: ResetDataType) => {
+  const moduleName = type === 'stock' ? t('moduleStock') : type === 'gold' ? t('moduleGold') : t('moduleFund')
+  const confirmed = await confirmRef.value?.open(
+    t('resetData'),
+    t('resetDataConfirm', { module: moduleName })
+  )
+  if (!confirmed) return
+
+  if (type === 'stock') {
+    localStorage.removeItem('my_stocks')
+    localStorage.removeItem('cached_quotes')
+    localStorage.removeItem('cached_quotes_date')
+  } else if (type === 'gold') {
+    localStorage.removeItem('gold_holding')
+    localStorage.removeItem('gold_price_cache')
+    localStorage.removeItem('ball_gold_price_cache')
+  } else {
+    localStorage.removeItem('my_funds')
+  }
+
+  toastRef.value?.show(t('resetDataDone', { module: moduleName }), 'success')
 }
 
 // 手续费设置弹框
@@ -450,6 +477,16 @@ onUnmounted(() => {
             >
           </div>
         </div>
+        <div v-show="expandedGroups.trade" class="setting-item">
+          <span class="label">{{ t('resetData') }}</span>
+          <div class="lang-select">
+            <span class="lang-option danger-link" @click="resetData('stock')">{{ t('moduleStock') }}</span>
+            <span class="lang-divider">|</span>
+            <span class="lang-option danger-link" @click="resetData('gold')">{{ t('moduleGold') }}</span>
+            <span class="lang-divider">|</span>
+            <span class="lang-option danger-link" @click="resetData('fund')">{{ t('moduleFund') }}</span>
+          </div>
+        </div>
       </div>
     </div>
     <!-- 版本号：放在可滚动内容外，常驻底部 -->
@@ -461,6 +498,7 @@ onUnmounted(() => {
       </div>
     </div>
     <Toast ref="toastRef" />
+    <Confirm ref="confirmRef" />
     <FeeSettingModal :show="showFeeModal" @close="showFeeModal = false" />
     <GoldFeeSettingModal :show="showGoldFeeModal" @close="showGoldFeeModal = false" />
     <ColumnOrderModal
@@ -698,6 +736,16 @@ onUnmounted(() => {
 
 .fee-disabled:hover {
   color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.danger-link {
+  color: #ff7875 !important;
+  cursor: pointer;
+}
+
+.danger-link:hover {
+  color: #ff4d4f !important;
+  text-decoration: underline;
 }
 
 .version-item {
