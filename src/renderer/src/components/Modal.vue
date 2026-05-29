@@ -284,6 +284,7 @@ defineExpose({ open })
                     class="info-icon-btn"
                     :title="t('initialCostTipTitle')"
                     :aria-label="t('initialCostTipTitle')"
+                    tabindex="-1"
                     @click.stop="showInitialCostTip"
                   >
                     i
