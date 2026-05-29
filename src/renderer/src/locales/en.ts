@@ -36,6 +36,10 @@ export default {
   columnOrderModalStockTitle: 'Stock Columns',
   columnOrderModalFundTitle: 'Fund Columns',
   columnCustomize: 'Customize Columns',
+  resetData: 'Reset Data',
+  resetDataConfirm:
+    'This will clear all {module} data. You will need to add it manually again. Confirm reset?',
+  resetDataDone: '{module} data reset',
   columnOrderReset: 'Reset',
   columnOrderResetDone: 'Restored default order',
   // Column names (labels in fund "column order" setting)

@@ -36,6 +36,9 @@ export default {
   columnOrderModalStockTitle: '股票列自定义',
   columnOrderModalFundTitle: '基金列自定义',
   columnCustomize: '列表列自定义',
+  resetData: '重置数据',
+  resetDataConfirm: '此操作会将{module}数据全部清除，需要重新手动添加，确认重置？',
+  resetDataDone: '已重置{module}数据',
   columnOrderReset: '重置',
   columnOrderResetDone: '已重置为默认',
   // 列名（用于基金"列顺序"设置项里的标签）
