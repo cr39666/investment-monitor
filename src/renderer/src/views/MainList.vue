@@ -2,65 +2,66 @@
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ModuleNavBar from '../components/ModuleNavBar.vue'
+import HoldingStockTable from '../components/HoldingStockTable.vue'
+import WatchStockTable from '../components/WatchStockTable.vue'
 import Modal from '../components/Modal.vue'
 import Confirm from '../components/Confirm.vue'
 import Toast from '../components/Toast.vue'
 import { loadStockColumnOrder, type StockColumnKey } from '../utils/columnOrder'
+import { normalizeStockCode } from '../utils/stockCode'
+import {
+  calculateDailyPnl as calcDailyPnl,
+  calculateDailyPnlPercent as calcDailyPnlPercent,
+  calculateMarketValue as calcMarketValue,
+  calculateTotalPnl as calcTotalPnl,
+  calculateTotalPnlPercent as calcTotalPnlPercent
+} from '../utils/stockCalc'
+import { useStockQuotes } from '../composables/useStockQuotes'
+import { useStockWatchlist } from '../composables/useStockWatchlist'
+import type { StockItem, StockPageMode } from '../types/stock'
 
 const { t } = useI18n()
 
-// 股票数据模型
-interface StockItem {
-  code: string // 比如 sh600519
-  cost: number // 成本价
-  amount: number // 持仓手数 (1手=100股)
-  buyDate?: string // 买入日期 (YYYY-MM-DD)
-  isNew?: boolean // 是否为新添加（用于初始化默认成本）
-  priceAlerts?: PriceAlert[] // 价格提醒列表
-  realizedPnl?: number // 已实现盈亏（减仓/清仓时累计，永久）
-  // 当前剩余持仓的精确成本总额（含买入手续费，单位元）：总盈亏金额的成本基准
-  positionCostBasis?: number
-  // 累计买入成本（含买入手续费，单位元）：建仓初始化、加仓累加、减仓不动；总盈亏比分母
-  totalCostBasis?: number
-  dailyRealizedPnl?: number // 当日已实现盈亏（调仓时累计，每日清零）
-  dailyDate?: string // 记录 dailyRealizedPnl 对应的日期，用于自动清零
-  // 当日已实现部分对应的分母基准；历史仓用昨收市值，当日新建仓用对应成本基准；每日清零
-  // 仅减仓/清仓时累计；这样清仓后 amount=0 也能算出正确的日盈亏比
-  dailyBasis?: number
-}
-
-interface WatchStockItem {
-  code: string
-}
-
-type StockPageMode = 'holding' | 'watch'
-
-// 价格提醒
-interface PriceAlert {
-  targetPrice: number // 目标价格
-  direction: 'up' | 'down' // up: 涨到该价格提醒, down: 跌到该价格提醒
-  triggered: boolean // 是否已触发
-}
-
-// 腾讯行情接口返回的字段对应
-interface StockQuote {
-  name: string // 股票名称
-  currentPrice: number // 最新价
-  yesterdayClose: number // 昨收价
-  changeAmount: number // 涨跌额
-  changePercent: number // 涨跌幅
-  quoteDate?: string // 行情写入时的本地日期(YYYY-MM-DD)，用于跨日识别陈旧昨收
-}
-
 const inputCode = ref('')
 const stocks = ref<StockItem[]>([])
-const watchStocks = ref<WatchStockItem[]>([])
 const stockPageMode = ref<StockPageMode>(
   (localStorage.getItem('stock_pageMode') as StockPageMode) || 'holding'
 )
-// 以 code 为 key 保存行情数据
-const quotes = ref<Record<string, StockQuote>>({})
 let timer: ReturnType<typeof setTimeout> | null = null
+
+const getTodayStr = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const getTrackedStockCodes = (): string[] => {
+  return Array.from(new Set([...stocks.value.map((s) => s.code), ...watchStocks.value.map((s) => s.code)]))
+}
+
+const {
+  quotes,
+  loadCachedQuotes,
+  fetchQuotesByCode,
+  fetchQuotes,
+  removeUnusedQuotes: removeUnusedStockQuotes
+} = useStockQuotes(getTrackedStockCodes, getTodayStr, (code, currentPrice) => {
+  const stock = stocks.value.find((s) => s.code === code)
+  if (stock?.isNew && currentPrice > 0) {
+    stock.cost = currentPrice
+    stock.isNew = false
+    saveStocks()
+  }
+  if (stock) checkPriceAlerts(stock, currentPrice)
+})
+
+const {
+  watchStocks,
+  selectedWatchCodes,
+  displayWatchStocks,
+  loadWatchStocks,
+  saveWatchStocks,
+  clearWatchSelection
+} = useStockWatchlist(quotes)
 
 const containerRef = ref<HTMLElement | null>(null)
 const stockInputRef = ref<HTMLInputElement | null>(null)
@@ -218,14 +219,6 @@ const displayStocks = computed(() => {
   })
 })
 
-const displayWatchStocks = computed(() => {
-  return [...watchStocks.value].sort((a, b) => {
-    const nameA = quotes.value[a.code]?.name || a.code
-    const nameB = quotes.value[b.code]?.name || b.code
-    return nameA.localeCompare(nameB, 'zh-CN')
-  })
-})
-
 // Name 这一列单行显示代码还是名称展示的追踪列表
 const shownCodes = ref<string[]>([])
 const toggleNameDisplay = (code: string) => {
@@ -280,7 +273,6 @@ const toggleSummaryPnlMode = () => {
 
 // 选中的行代码（多选）
 const selectedCodes = ref<string[]>([])
-const selectedWatchCodes = ref<string[]>([])
 const toggleRowSelection = (code: string) => {
   const selected = stockPageMode.value === 'holding' ? selectedCodes : selectedWatchCodes
   const index = selected.value.indexOf(code)
@@ -295,7 +287,7 @@ const toggleStockPageMode = () => {
   stockPageMode.value = stockPageMode.value === 'holding' ? 'watch' : 'holding'
   localStorage.setItem('stock_pageMode', stockPageMode.value)
   selectedCodes.value = []
-  selectedWatchCodes.value = []
+  clearWatchSelection()
   nextTick(() => stockInputRef.value?.focus())
 }
 
@@ -338,56 +330,6 @@ const loadStocks = () => {
   }
 }
 
-const loadWatchStocks = () => {
-  const saved = localStorage.getItem('watch_stocks')
-  if (!saved) return
-  try {
-    const parsed = JSON.parse(saved)
-    if (Array.isArray(parsed)) {
-      watchStocks.value = parsed
-        .map((item) => (typeof item === 'string' ? { code: item } : item))
-        .filter((item): item is WatchStockItem => !!item?.code)
-    }
-  } catch (e) {
-    console.error('Failed to parse watch stocks', e)
-  }
-}
-
-// 加载缓存的行情数据
-const loadCachedQuotes = () => {
-  const saved = localStorage.getItem('cached_quotes')
-  const savedDate = localStorage.getItem('cached_quotes_date')
-  const today = getTodayStr()
-
-  // 如果缓存不是今天的，清除缓存（确保使用新的昨收价）
-  if (savedDate !== today) {
-    localStorage.removeItem('cached_quotes')
-    localStorage.removeItem('cached_quotes_date')
-    return
-  }
-
-  if (saved) {
-    try {
-      quotes.value = JSON.parse(saved)
-    } catch (e) {
-      console.error('Failed to parse cached quotes', e)
-    }
-  }
-}
-
-// 缓存行情数据
-const cacheQuotes = () => {
-  const today = getTodayStr()
-  localStorage.setItem('cached_quotes', JSON.stringify(quotes.value))
-  localStorage.setItem('cached_quotes_date', today)
-}
-
-// 获取今天日期字符串 (YYYY-MM-DD)
-const getTodayStr = () => {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 // 跨日清零当日字段（dailyRealizedPnl / dailyBasis / dailyDate 同生命周期）
 const resetDailyRealizedPnl = () => {
   const today = getTodayStr()
@@ -414,26 +356,6 @@ const onVisibilityChange = () => {
 // 保存到本地存储
 const saveStocks = () => {
   localStorage.setItem('my_stocks', JSON.stringify(stocks.value))
-}
-
-const saveWatchStocks = () => {
-  localStorage.setItem('watch_stocks', JSON.stringify(watchStocks.value))
-}
-
-const normalizeStockCode = (rawCode: string): string => {
-  let code = rawCode.trim().toLowerCase()
-  if (/^\d{6}$/.test(code)) {
-    if (code.startsWith('6') || code.startsWith('5') || code.startsWith('7') || code.startsWith('9')) {
-      code = 'sh' + code
-    } else if (code.startsWith('0') || code.startsWith('1') || code.startsWith('3')) {
-      code = 'sz' + code
-    } else if (code.startsWith('4') || code.startsWith('8')) {
-      code = 'bj' + code
-    } else {
-      code = 'sz' + code
-    }
-  }
-  return code
 }
 
 // 添加股票
@@ -500,59 +422,11 @@ const handleAddAction = () => {
   else addWatchStock()
 }
 
-// 单独获取行情（辅助addStock）
-const fetchQuotesByCode = (code: string): Promise<void> => {
-  return new Promise<void>((resolve) => {
-    const scriptId = 'temp-jsonp-script'
-    let script = document.getElementById(scriptId) as HTMLScriptElement
-    if (script) document.body.removeChild(script)
-    script = document.createElement('script')
-    script.id = scriptId
-    script.charset = 'gbk'
-    script.src = `http://qt.gtimg.cn/q=${code}&t=${Date.now()}`
-    const cleanup = () => {
-      // 释放腾讯接口注入的全局变量，避免常驻 window
-      try {
-        delete (window as unknown as Record<string, unknown>)[`v_${code}`]
-      } catch {
-        ;(window as unknown as Record<string, unknown>)[`v_${code}`] = undefined
-      }
-      if (script.parentNode) document.body.removeChild(script)
-    }
-    script.onload = () => {
-      const varName = `v_${code}`
-      const dataStr = (window as unknown as Record<string, unknown>)[varName] as string | undefined
-      if (dataStr) {
-        const parts = dataStr.split('~')
-        if (parts.length > 5) {
-          quotes.value[code] = {
-            name: parts[1],
-            currentPrice: parseFloat(parts[3]),
-            yesterdayClose: parseFloat(parts[4]),
-            changeAmount: parseFloat(parts[31]),
-            changePercent: parseFloat(parts[32]),
-            quoteDate: getTodayStr()
-          }
-        }
-      }
-      cleanup()
-      resolve()
-    }
-    script.onerror = () => {
-      cleanup()
-      resolve()
-    }
-    document.body.appendChild(script)
-  })
-}
-
 const removeUnusedQuotes = (codes: string[]) => {
-  codes.forEach((code) => {
-    const stillUsed =
-      stocks.value.some((s) => s.code === code) || watchStocks.value.some((s) => s.code === code)
-    if (!stillUsed) delete quotes.value[code]
-  })
-  cacheQuotes()
+  removeUnusedStockQuotes(
+    codes,
+    (code) => stocks.value.some((s) => s.code === code) || watchStocks.value.some((s) => s.code === code)
+  )
 }
 
 // 移除/清空股票逻辑
@@ -785,106 +659,6 @@ const adjustStockFlow = async (stock: StockItem) => {
   }
 }
 
-// 检查是否为 A 股交易时间
-const isTradingTime = () => {
-  const now = new Date()
-  const day = now.getDay()
-  const hours = now.getHours()
-  const minutes = now.getMinutes()
-
-  // 周六周日不交易
-  if (day === 0 || day === 6) return false
-
-  const timeNum = hours * 100 + minutes
-
-  // A 股交易时间：09:15 - 11:30, 13:00 - 15:00
-  const isMorning = timeNum >= 915 && timeNum <= 1130
-  const isAfternoon = timeNum >= 1300 && timeNum <= 1500
-
-  return isMorning || isAfternoon
-}
-
-const getTrackedStockCodes = (): string[] => {
-  return Array.from(new Set([...stocks.value.map((s) => s.code), ...watchStocks.value.map((s) => s.code)]))
-}
-
-// 获取行情数据 (使用 JSONP 注入 script 标签，解决 GBK 编码跨域)
-const fetchQuotes = (force = false) => {
-  const trackedCodes = getTrackedStockCodes()
-  if (trackedCodes.length === 0) return
-
-  // 非交易时间且非强制刷新(初始化)时，跳过请求
-  if (!force && !isTradingTime()) {
-    return
-  }
-
-  const codes = trackedCodes.join(',')
-  const scriptId = 'jsonp-stock-script'
-  let script = document.getElementById(scriptId) as HTMLScriptElement
-
-  if (script) {
-    document.body.removeChild(script)
-  }
-
-  script = document.createElement('script')
-  script.id = scriptId
-  script.charset = 'gbk'
-  script.src = `http://qt.gtimg.cn/q=${codes}&t=${Date.now()}`
-
-  // 监听脚本加载完成
-  const stockCodes = [...trackedCodes]
-  const cleanupGlobals = () => {
-    // 释放腾讯接口注入到 window 的 v_xxx 全局变量
-    stockCodes.forEach((code) => {
-      try {
-        delete (window as unknown as Record<string, unknown>)[`v_${code}`]
-      } catch {
-        ;(window as unknown as Record<string, unknown>)[`v_${code}`] = undefined
-      }
-    })
-  }
-  script.onload = () => {
-    stockCodes.forEach((code) => {
-      // 腾讯接口会在全局注入形如 v_sh600519 的变量
-      const varName = `v_${code}`
-      const dataStr = (window as any)[varName]
-      if (dataStr) {
-        const parts = dataStr.split('~')
-        if (parts.length > 5) {
-          const currentPrice = parseFloat(parts[3])
-          quotes.value[code] = {
-            name: parts[1],
-            currentPrice,
-            yesterdayClose: parseFloat(parts[4]),
-            changeAmount: parseFloat(parts[31]),
-            changePercent: parseFloat(parts[32]),
-            quoteDate: getTodayStr()
-          }
-
-          const stock = stocks.value.find((s) => s.code === code)
-          // 如果是新添加的股票，且成功获取到价格，则将成本价初始化为当前价
-          if (stock?.isNew && currentPrice > 0) {
-            stock.cost = currentPrice
-            stock.isNew = false
-            saveStocks()
-          }
-
-          // 检查价格提醒
-          if (stock) checkPriceAlerts(stock, currentPrice)
-        }
-      }
-    })
-    // 缓存行情数据
-    cacheQuotes()
-    cleanupGlobals()
-  }
-  script.onerror = () => {
-    cleanupGlobals()
-  }
-
-  document.body.appendChild(script)
-}
-
 // 通用窗口尺寸同步：测量容器实际尺寸并通知主进程
 const syncWindowSize = () => {
   if (!containerRef.value) return
@@ -895,96 +669,24 @@ const syncWindowSize = () => {
   window.electron.ipcRenderer.send('resize-window', width, height)
 }
 
-const getPositionCostBasis = (stock: StockItem): number => {
-  const basis =
-    stock.positionCostBasis ?? (stock.cost > 0 && stock.amount > 0 ? stock.cost * stock.amount * 100 : 0)
-  return Number.isFinite(basis) ? basis : 0
-}
-
-// 计算某只股票的当日盈亏
-// 今天买入：当前市值 - 当前持仓成本基准 + 当日已实现盈亏
-// 之前买入：(现价 - 昨收) × 股数 + 当日已实现盈亏修正
-// 跨日陈旧昨收（quoteDate !== today）返回 null，避免不重启跨零点后显示"昨天的日盈"
 const calculateDailyPnl = (stock: StockItem): number | null => {
-  const quote = quotes.value[stock.code]
-  if (!quote) return null
-
-  const today = getTodayStr()
-
-  // 行情陈旧（跨日未刷新）→ 昨收过期
-  if (quote.quoteDate && quote.quoteDate !== today) return null
-
-  if (stock.buyDate === today) {
-    const marketValue = quote.currentPrice * stock.amount * 100
-    const dailyRealizedPnl = (stock.dailyDate === today ? stock.dailyRealizedPnl : 0) || 0
-    return marketValue - getPositionCostBasis(stock) + dailyRealizedPnl
-  }
-
-  const dailyCorrection = (stock.dailyDate === today ? stock.dailyRealizedPnl : 0) || 0
-  return (quote.currentPrice - quote.yesterdayClose) * stock.amount * 100 + dailyCorrection
+  return calcDailyPnl(stock, quotes.value[stock.code], getTodayStr())
 }
 
-// 计算某只股票的持仓总盈亏 = 当前市值 - 当前持仓成本基准 + 已实现盈亏
 const calculateTotalPnl = (stock: StockItem): number | null => {
-  const quote = quotes.value[stock.code]
-  if (!quote) return null
-  const positionCostBasis = getPositionCostBasis(stock)
-  if (stock.amount > 0 && positionCostBasis <= 0 && stock.cost <= 0) return null
-  const marketValue = quote.currentPrice * stock.amount * 100
-  const realizedPnl = stock.realizedPnl || 0
-  return marketValue - positionCostBasis + realizedPnl
+  return calcTotalPnl(stock, quotes.value[stock.code])
 }
 
-// 计算某只股票的持仓市值 = 现价 * 股数 * 100
 const calculateMarketValue = (stock: StockItem): number => {
-  const quote = quotes.value[stock.code]
-  if (!quote) return 0
-  return quote.currentPrice * stock.amount * 100
+  return calcMarketValue(stock, quotes.value[stock.code])
 }
 
-// 计算某只股票的当日盈亏比(%)
-// 当日盈亏额 / 昨日市值(或买入市值) × 100
 const calculateDailyPnlPercent = (stock: StockItem): number | null => {
-  const quote = quotes.value[stock.code]
-  if (!quote) return null
-
-  const today = getTodayStr()
-  const dailyPnl = calculateDailyPnl(stock)
-  if (dailyPnl === null) return null
-  // 当日已卖出部分的分母基准（清仓后用它做分母）
-  const soldBasis = (stock.dailyDate === today ? stock.dailyBasis : 0) || 0
-
-  // 如果今天买入，基准为当前持仓成本 + 当日已卖出部分成本基准
-  if (stock.buyDate === today) {
-    const costValue = getPositionCostBasis(stock)
-    const denom = costValue + soldBasis
-    if (denom <= 0) return null
-    return (dailyPnl / denom) * 100
-  }
-
-  // 否则基准 = 持仓部分昨日市值 + 当日已卖出部分昨日基准
-  // 这样清仓后 amount=0 时仍可正常计算比例
-  const yesterdayValue = quote.yesterdayClose * stock.amount * 100
-  const denom = yesterdayValue + soldBasis
-  if (denom <= 0) return null
-  return (dailyPnl / denom) * 100
+  return calcDailyPnlPercent(stock, quotes.value[stock.code], getTodayStr())
 }
 
-// 计算某只股票的总盈亏比(%)
-// 总盈亏额 / 累计买入成本 × 100
-// 分母使用 totalCostBasis（累计买入成本），与当前持仓成本基准分离
 const calculateTotalPnlPercent = (stock: StockItem): number | null => {
-  const quote = quotes.value[stock.code]
-  if (!quote) return null
-
-  const totalPnl = calculateTotalPnl(stock)
-  if (totalPnl === null) return null
-
-  // 旧数据缺 totalCostBasis 时退回当前持仓成本基准
-  const basis =
-    stock.totalCostBasis && stock.totalCostBasis > 0 ? stock.totalCostBasis : getPositionCostBasis(stock)
-  if (basis <= 0) return null
-  return (totalPnl / basis) * 100
+  return calcTotalPnlPercent(stock, quotes.value[stock.code])
 }
 
 // 总当日盈亏额
@@ -1204,481 +906,60 @@ onUnmounted(() => {
       <template #navLabel>{{ t('stock') }}</template>
     </ModuleNavBar>
     <div class="table-container">
-      <table v-if="stockPageMode === 'holding'" class="stock-table">
-        <thead>
-          <tr>
-            <template v-for="key in columnOrder" :key="`th-${key}`">
-              <!-- name -->
-              <th
-                v-if="key === 'name'"
-                :title="nameDisplayMode === 0 ? t('name') : t('stockCode')"
-                class="clickable-th col-name"
-              >
-                <span class="th-text" @click="toggleNameDisplayMode">{{
-                  nameDisplayMode === 0 ? t('thName') : t('thCode')
-                }}</span>
-                <span
-                  :class="['sort-icon', { 'sort-active': sortColumn === 'name' }]"
-                  @click="toggleSort('name')"
-                  >{{ sortColumn === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
-                >
-              </th>
-
-              <!-- price (+ split chg) -->
-              <template v-else-if="key === 'price'">
-                <th
-                  :title="
-                    splitChg
-                      ? t('currentPrice')
-                      : priceDisplayMode === 0
-                        ? t('currentPrice')
-                        : priceDisplayMode === 1
-                          ? t('change')
-                          : t('priceAndChange')
-                  "
-                  class="clickable-th col-price"
-                >
-                  <span
-                    :class="splitChg ? 'th-text-static' : 'th-text'"
-                    @click="splitChg ? undefined : togglePriceDisplayMode()"
-                    >{{
-                      splitChg
-                        ? t('thPrice')
-                        : priceDisplayMode === 0
-                          ? t('thPrice')
-                          : priceDisplayMode === 1
-                            ? t('thChg')
-                            : t('thPriceChg')
-                    }}</span
-                  >
-                  <span
-                    :class="[
-                      'sort-icon',
-                      { 'sort-active': sortColumn === 'curPrice' || sortColumn === 'change' }
-                    ]"
-                    @click="
-                      toggleSort(splitChg ? 'curPrice' : priceDisplayMode === 1 ? 'change' : 'curPrice')
-                    "
-                    >{{
-                      sortColumn === 'curPrice' || sortColumn === 'change'
-                        ? sortOrder === 'asc'
-                          ? '↑'
-                          : '↓'
-                        : '↕'
-                    }}</span
-                  >
-                </th>
-                <th v-if="splitChg" :title="t('change')" class="clickable-th col-num">
-                  <span class="th-text-static">{{ t('thChg') }}</span>
-                  <span
-                    :class="['sort-icon', { 'sort-active': sortColumn === 'change' }]"
-                    @click="toggleSort('change')"
-                    >{{ sortColumn === 'change' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
-                  >
-                </th>
-              </template>
-
-              <!-- dpnl (+ split dpnlPct) -->
-              <template v-else-if="key === 'dpnl'">
-                <th
-                  :title="
-                    splitDpnl
-                      ? t('dailyPnl')
-                      : dpnlDisplayMode === 0
-                        ? t('dailyPnl')
-                        : dpnlDisplayMode === 1
-                          ? t('dailyPnlPercent')
-                          : t('dailyPnl') + ' / ' + t('dailyPnlPercent')
-                  "
-                  class="clickable-th col-num"
-                >
-                  <span
-                    :class="splitDpnl ? 'th-text-static' : 'th-text'"
-                    @click="splitDpnl ? undefined : toggleDpnlDisplayMode()"
-                    >{{
-                      splitDpnl
-                        ? t('thDPnl')
-                        : dpnlDisplayMode === 0
-                          ? t('thDPnl')
-                          : dpnlDisplayMode === 1
-                            ? t('thDPnlPct')
-                            : t('thDPnlBoth')
-                    }}</span
-                  >
-                  <span
-                    :class="['sort-icon', { 'sort-active': sortColumn === 'dpnl' }]"
-                    @click="toggleSort('dpnl')"
-                    >{{ sortColumn === 'dpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
-                  >
-                </th>
-                <th v-if="splitDpnl" :title="t('dailyPnlPercent')" class="clickable-th col-num">
-                  <span class="th-text-static">{{ t('thDPnlPct') }}</span>
-                  <span
-                    :class="['sort-icon', { 'sort-active': sortColumn === 'dpnlPct' }]"
-                    @click="toggleSort('dpnlPct')"
-                    >{{ sortColumn === 'dpnlPct' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
-                  >
-                </th>
-              </template>
-
-              <!-- tpnl (+ split tpnlPct) -->
-              <template v-else-if="key === 'tpnl'">
-                <th
-                  :title="
-                    splitPnl
-                      ? t('totalPnl')
-                      : tpnlDisplayMode === 0
-                        ? t('totalPnl')
-                        : tpnlDisplayMode === 1
-                          ? t('totalPnlPercent')
-                          : t('totalPnl') + ' / ' + t('totalPnlPercent')
-                  "
-                  class="clickable-th col-num"
-                >
-                  <span
-                    :class="splitPnl ? 'th-text-static' : 'th-text'"
-                    @click="splitPnl ? undefined : toggleTpnlDisplayMode()"
-                    >{{
-                      splitPnl
-                        ? t('thTPnl')
-                        : tpnlDisplayMode === 0
-                          ? t('thTPnl')
-                          : tpnlDisplayMode === 1
-                            ? t('thTPnlPct')
-                            : t('thTPnlBoth')
-                    }}</span
-                  >
-                  <span
-                    :class="['sort-icon', { 'sort-active': sortColumn === 'tpnl' }]"
-                    @click="toggleSort('tpnl')"
-                    >{{ sortColumn === 'tpnl' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
-                  >
-                </th>
-                <th v-if="splitPnl" :title="t('totalPnlPercent')" class="clickable-th col-num">
-                  <span class="th-text-static">{{ t('thTPnlPct') }}</span>
-                  <span
-                    :class="['sort-icon', { 'sort-active': sortColumn === 'tpnlPct' }]"
-                    @click="toggleSort('tpnlPct')"
-                    >{{ sortColumn === 'tpnlPct' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
-                  >
-                </th>
-              </template>
-
-              <!-- avg (+ split marketVal) -->
-              <template v-else-if="key === 'avg'">
-                <th
-                  :title="
-                    splitVal
-                      ? t('avgBuyPrice')
-                      : avgDisplayMode === 0
-                        ? t('avgBuyPrice')
-                        : avgDisplayMode === 1
-                          ? t('marketValue')
-                          : t('avgBuyPrice') + ' / ' + t('marketValue')
-                  "
-                  class="clickable-th col-avg"
-                >
-                  <span
-                    :class="splitVal ? 'th-text-static' : 'th-text'"
-                    @click="splitVal ? undefined : toggleAvgDisplayMode()"
-                    >{{
-                      splitVal
-                        ? t('thAvg')
-                        : avgDisplayMode === 0
-                          ? t('thAvg')
-                          : avgDisplayMode === 1
-                            ? t('thVal')
-                            : t('thAvgVal')
-                    }}</span
-                  >
-                  <span
-                    :class="['sort-icon', { 'sort-active': sortColumn === 'avg' }]"
-                    @click="toggleSort('avg')"
-                    >{{ sortColumn === 'avg' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
-                  >
-                </th>
-                <th v-if="splitVal" :title="t('marketValue')" class="clickable-th col-avg">
-                  <span class="th-text-static">{{ t('thVal') }}</span>
-                  <span
-                    :class="['sort-icon', { 'sort-active': sortColumn === 'marketVal' }]"
-                    @click="toggleSort('marketVal')"
-                    >{{ sortColumn === 'marketVal' ? (sortOrder === 'asc' ? '↑' : '↓') : '↕' }}</span
-                  >
-                </th>
-              </template>
-
-              <!-- qty -->
-              <th
-                v-else-if="key === 'qty'"
-                :title="qtyDisplayMode === 0 ? t('amount') : t('priceAlert')"
-                class="clickable-th col-qty"
-              >
-                <span class="th-text" @click="toggleQtyDisplayMode">{{
-                  qtyDisplayMode === 0 ? t('thQty') : t('thAlert')
-                }}</span>
-              </th>
-            </template>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="stock in displayStocks"
-            :key="stock.code"
-            :class="{ 'row-selected': selectedCodes.includes(stock.code) }"
-            @click="toggleRowSelection(stock.code)"
-          >
-            <template v-for="key in columnOrder" :key="`td-${stock.code}-${key}`">
-              <!-- name -->
-              <td
-                v-if="key === 'name'"
-                :class="['name-cell', (quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
-                :title="quotes[stock.code]?.name || stock.code"
-                @click.stop="toggleNameDisplay(stock.code)"
-              >
-                <div class="clickable-tag">
-                  <span
-                    v-if="
-                      (nameDisplayMode === 0 && !shownCodes.includes(stock.code)) ||
-                      (nameDisplayMode === 1 && shownCodes.includes(stock.code))
-                    "
-                    >{{ formatName(quotes[stock.code]?.name) }}</span
-                  >
-                  <span v-else>{{ stock.code }}</span>
-                </div>
-              </td>
-
-              <!-- price (+ split chg) -->
-              <template v-else-if="key === 'price'">
-                <td
-                  class="col-price"
-                  :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
-                >
-                  <template v-if="splitChg || priceDisplayMode === 0">
-                    {{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}
-                  </template>
-                  <template v-else-if="priceDisplayMode === 1">
-                    <span v-if="quotes[stock.code]">
-                      {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
-                      }}{{ quotes[stock.code].changePercent }}%
-                    </span>
-                    <span v-else>--</span>
-                  </template>
-                  <template v-else>
-                    <div class="price-dual">
-                      <span class="price-main">{{
-                        quotes[stock.code]?.currentPrice?.toFixed(2) || '--'
-                      }}</span>
-                      <span v-if="quotes[stock.code]" class="price-chg">
-                        {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
-                        }}{{ quotes[stock.code].changePercent }}%
-                      </span>
-                    </div>
-                  </template>
-                </td>
-                <td
-                  v-if="splitChg"
-                  class="chg-cell col-num"
-                  :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
-                >
-                  <span v-if="quotes[stock.code]">
-                    {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
-                    }}{{ quotes[stock.code].changePercent }}%
-                  </span>
-                  <span v-else>--</span>
-                </td>
-              </template>
-
-              <!-- dpnl (+ split dpnlPct) -->
-              <template v-else-if="key === 'dpnl'">
-                <td class="col-num" :class="(calculateDailyPnl(stock) ?? 0) >= 0 ? 'red' : 'green'">
-                  <span>
-                    <template v-if="splitDpnl || dpnlDisplayMode === 0">
-                      {{ calculateDailyPnl(stock) !== null ? calculateDailyPnl(stock)!.toFixed(2) : '--' }}
-                    </template>
-                    <template v-else-if="dpnlDisplayMode === 1">
-                      {{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}
-                    </template>
-                    <template v-else>
-                      <div class="price-dual">
-                        <span class="price-main">
-                          {{
-                            calculateDailyPnl(stock) !== null ? calculateDailyPnl(stock)!.toFixed(2) : '--'
-                          }}
-                        </span>
-                        <span class="price-chg">{{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}</span>
-                      </div>
-                    </template>
-                  </span>
-                </td>
-                <td
-                  v-if="splitDpnl"
-                  class="col-num"
-                  :class="(calculateDailyPnlPercent(stock) ?? 0) >= 0 ? 'red' : 'green'"
-                >
-                  <span>
-                    {{ formatPnlPercent(calculateDailyPnlPercent(stock)) }}
-                  </span>
-                </td>
-              </template>
-
-              <!-- tpnl (+ split tpnlPct) -->
-              <template v-else-if="key === 'tpnl'">
-                <td class="tpnl-cell col-num" :class="(calculateTotalPnl(stock) || 0) >= 0 ? 'red' : 'green'">
-                  <span>
-                    <template v-if="splitPnl || tpnlDisplayMode === 0">
-                      {{ calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(2) : '--' }}
-                    </template>
-                    <template v-else-if="tpnlDisplayMode === 1">
-                      {{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}
-                    </template>
-                    <template v-else>
-                      <div class="price-dual">
-                        <span class="price-main">{{
-                          calculateTotalPnl(stock) !== null ? calculateTotalPnl(stock)!.toFixed(2) : '--'
-                        }}</span>
-                        <span class="price-chg">{{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}</span>
-                      </div>
-                    </template>
-                  </span>
-                </td>
-                <td
-                  v-if="splitPnl"
-                  class="tpnl-cell col-num"
-                  :class="(calculateTotalPnlPercent(stock) || 0) >= 0 ? 'red' : 'green'"
-                >
-                  <span>
-                    {{ formatPnlPercent(calculateTotalPnlPercent(stock)) }}
-                  </span>
-                </td>
-              </template>
-
-              <!-- avg (+ split marketVal) -->
-              <template v-else-if="key === 'avg'">
-                <td class="col-avg">
-                  <span>
-                    <template v-if="splitVal || avgDisplayMode === 0">
-                      {{ stock.cost?.toFixed(3) }}
-                    </template>
-                    <template v-else-if="avgDisplayMode === 1">
-                      {{
-                        calculateMarketValue(stock).toLocaleString(undefined, {
-                          maximumFractionDigits: 0
-                        })
-                      }}
-                    </template>
-                    <template v-else>
-                      <div class="price-dual">
-                        <span class="price-main">{{ stock.cost?.toFixed(3) }}</span>
-                        <span class="price-chg">{{
-                          calculateMarketValue(stock).toLocaleString(undefined, {
-                            maximumFractionDigits: 0
-                          })
-                        }}</span>
-                      </div>
-                    </template>
-                  </span>
-                </td>
-                <td v-if="splitVal" class="col-avg">
-                  <span>
-                    {{
-                      calculateMarketValue(stock).toLocaleString(undefined, {
-                        maximumFractionDigits: 0
-                      })
-                    }}
-                  </span>
-                </td>
-              </template>
-
-              <!-- qty -->
-              <td
-                v-else-if="key === 'qty'"
-                class="clickable-cell col-qty"
-                :title="qtyDisplayMode === 0 ? t('clickToAdjust') : t('setPriceAlert')"
-                @click.stop="qtyDisplayMode === 0 ? adjustStockFlow(stock) : setPriceAlert(stock)"
-              >
-                <div
-                  class="clickable-tag"
-                  :class="{ 'alert-active': qtyDisplayMode === 1 && stock.priceAlerts?.length }"
-                >
-                  <template v-if="qtyDisplayMode === 0">
-                    {{ stock.amount }}
-                  </template>
-                  <template v-else>
-                    <span v-if="stock.priceAlerts?.length" class="alert-text">
-                      {{ formatPriceAlerts(stock) }}
-                    </span>
-                    <span v-else class="alert-placeholder">➕</span>
-                  </template>
-                </div>
-              </td>
-            </template>
-          </tr>
-          <tr v-if="stocks.length === 0">
-            <td
-              :colspan="
-                6 + (splitChg ? 1 : 0) + (splitDpnl ? 1 : 0) + (splitPnl ? 1 : 0) + (splitVal ? 1 : 0)
-              "
-              class="empty-row"
-            >
-              {{ t('noStocks') }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <table v-else class="stock-table watch-table">
-        <thead>
-          <tr>
-            <th :title="t('name')" class="col-name">{{ t('thName') }}</th>
-            <th :title="t('currentPrice')" class="col-price">{{ t('thPrice') }}</th>
-            <th :title="t('change')" class="col-num">{{ t('thChg') }}</th>
-            <th :title="t('changeAmount')" class="col-num">{{ t('thChangeAmount') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="stock in displayWatchStocks"
-            :key="stock.code"
-            :class="{ 'row-selected': selectedWatchCodes.includes(stock.code) }"
-            @click="toggleRowSelection(stock.code)"
-          >
-            <td
-              :class="['name-cell', (quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']"
-              :title="quotes[stock.code]?.name || stock.code"
-              @click.stop="toggleNameDisplay(stock.code)"
-            >
-              <div class="clickable-tag">
-                <span
-                  v-if="
-                    (nameDisplayMode === 0 && !shownCodes.includes(stock.code)) ||
-                    (nameDisplayMode === 1 && shownCodes.includes(stock.code))
-                  "
-                  >{{ formatName(quotes[stock.code]?.name) }}</span
-                >
-                <span v-else>{{ stock.code }}</span>
-              </div>
-            </td>
-            <td class="col-price" :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
-              {{ quotes[stock.code]?.currentPrice?.toFixed(2) || '--' }}
-            </td>
-            <td class="col-num" :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
-              <span v-if="quotes[stock.code]">
-                {{ quotes[stock.code].changePercent > 0 ? '+' : '' }}{{ quotes[stock.code].changePercent }}%
-              </span>
-              <span v-else>--</span>
-            </td>
-            <td class="col-num" :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
-              <span v-if="quotes[stock.code]">
-                {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
-                }}{{ quotes[stock.code].changeAmount.toFixed(2) }}
-              </span>
-              <span v-else>--</span>
-            </td>
-          </tr>
-          <tr v-if="watchStocks.length === 0">
-            <td colspan="4" class="empty-row">{{ t('noWatchStocks') }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <HoldingStockTable
+        v-if="stockPageMode === 'holding'"
+        :column-order="columnOrder"
+        :stocks="stocks"
+        :display-stocks="displayStocks"
+        :selected-codes="selectedCodes"
+        :quotes="quotes"
+        :shown-codes="shownCodes"
+        :name-display-mode="nameDisplayMode"
+        :price-display-mode="priceDisplayMode"
+        :dpnl-display-mode="dpnlDisplayMode"
+        :tpnl-display-mode="tpnlDisplayMode"
+        :avg-display-mode="avgDisplayMode"
+        :qty-display-mode="qtyDisplayMode"
+        :split-chg="splitChg"
+        :split-dpnl="splitDpnl"
+        :split-pnl="splitPnl"
+        :split-val="splitVal"
+        :sort-column="sortColumn"
+        :sort-order="sortOrder"
+        :t="t"
+        :format-name="formatName"
+        :calculate-daily-pnl="calculateDailyPnl"
+        :calculate-daily-pnl-percent="calculateDailyPnlPercent"
+        :calculate-total-pnl="calculateTotalPnl"
+        :calculate-total-pnl-percent="calculateTotalPnlPercent"
+        :calculate-market-value="calculateMarketValue"
+        :format-pnl-percent="formatPnlPercent"
+        :format-price-alerts="formatPriceAlerts"
+        @toggle-row-selection="toggleRowSelection"
+        @toggle-name-display="toggleNameDisplay"
+        @toggle-name-display-mode="toggleNameDisplayMode"
+        @toggle-price-display-mode="togglePriceDisplayMode"
+        @toggle-dpnl-display-mode="toggleDpnlDisplayMode"
+        @toggle-tpnl-display-mode="toggleTpnlDisplayMode"
+        @toggle-avg-display-mode="toggleAvgDisplayMode"
+        @toggle-qty-display-mode="toggleQtyDisplayMode"
+        @toggle-sort="toggleSort"
+        @adjust-stock="adjustStockFlow"
+        @set-price-alert="setPriceAlert"
+      />
+      <WatchStockTable
+        v-else
+        :watch-stocks="watchStocks"
+        :display-watch-stocks="displayWatchStocks"
+        :selected-watch-codes="selectedWatchCodes"
+        :quotes="quotes"
+        :shown-codes="shownCodes"
+        :name-display-mode="nameDisplayMode"
+        :t="t"
+        :format-name="formatName"
+        @toggle-row-selection="toggleRowSelection"
+        @toggle-name-display="toggleNameDisplay"
+      />
     </div>
 
     <div class="summary-section">
@@ -1797,13 +1078,6 @@ onUnmounted(() => {
   transform: scale(0.95);
 }
 
-.fund-btn {
-  background-color: rgba(46, 204, 113, 0.1);
-}
-.fund-btn:hover {
-  background-color: rgba(46, 204, 113, 0.3);
-}
-
 .mode-icon {
   font-size: 14px;
   opacity: 0.6;
@@ -1869,133 +1143,8 @@ onUnmounted(() => {
   text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
 }
 
-.mini-btn {
-  padding: 2px 2px;
-  font-size: 12px;
-  background-color: transparent;
-  border: none;
-}
-.mini-btn:hover {
-  background-color: rgba(255, 77, 79, 0.2);
-}
-
 .table-container {
   flex: 1;
-}
-
-.stock-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  border-bottom: 1px solid #3a3d4a;
-}
-
-.stock-table th,
-.stock-table td {
-  padding: 1px 4px; /* Further reduced padding for compact look */
-}
-
-.stock-table th {
-  border-bottom: 1px solid #3a3d4a;
-  text-align: center;
-  color: #aaa;
-  font-size: 11px; /* Slightly smaller font for headers */
-}
-
-.stock-table th:first-child,
-.stock-table td:first-child,
-.stock-table td.col-name,
-.stock-table td.col-price,
-.stock-table td.col-avg,
-.stock-table td.col-qty,
-.stock-table td:last-child {
-  text-align: center;
-}
-
-.watch-table {
-  min-width: 240px;
-}
-
-/* Price/Chg% 双行模式 */
-.price-dual {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.1;
-}
-
-.price-main {
-  font-size: 13px;
-}
-
-.price-chg {
-  font-size: 9px;
-  opacity: 0.75;
-}
-
-.edit-input {
-  width: 45px;
-  padding: 0; /* Removed padding to minimize height */
-  text-align: center;
-  background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  color: white;
-  border-radius: 4px;
-  font-size: 12px;
-  height: 18px; /* Fixed small height */
-}
-
-/* 隐藏默认上下箭头 */
-.edit-input::-webkit-outer-spin-button,
-.edit-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.edit-input[type='number'] {
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-.number-input-group {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.step-btn {
-  opacity: 0;
-  transition:
-    opacity 0.2s,
-    background-color 0.2s;
-  background-color: transparent;
-  border: none;
-  color: #aaa;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-}
-/* .step-btn的奇数padding为4,6；偶数padding为4,5 */
-.step-btn:nth-of-type(odd) {
-  padding: 0 4px;
-}
-.step-btn:nth-of-type(even) {
-  padding: 0 4px;
-}
-
-.number-input-group:hover .step-btn {
-  opacity: 1;
-}
-
-.step-btn:hover {
-  background-color: #4a4e5d;
-  color: #fff;
-}
-
-.empty-row {
-  text-align: center !important;
-  color: #666;
-  padding: 30px !important;
 }
 
 .summary-section {
@@ -2015,83 +1164,6 @@ onUnmounted(() => {
 
 .green {
   color: var(--ev-c-blue);
-}
-
-.clickable-th {
-  cursor: default;
-  user-select: none;
-  white-space: nowrap;
-}
-
-.row-selected {
-  background-color: rgba(46, 204, 113, 0.15) !important;
-  border-radius: 6px;
-}
-
-.row-selected td {
-  border-bottom-color: rgba(46, 204, 113, 0.3);
-}
-
-.row-selected td:first-child {
-  border-radius: 6px 0 0 6px;
-}
-
-.row-selected td:last-child {
-  border-radius: 0 6px 6px 0;
-}
-
-.clickable-th:hover {
-  color: #ccc;
-}
-
-.th-text {
-  position: relative;
-  cursor: pointer;
-  text-decoration: underline dotted color-mix(in srgb, var(--ev-c-pink) 70%, transparent);
-  text-underline-offset: 2px;
-  display: inline-block;
-  transition:
-    color 0.2s,
-    text-shadow 0.2s,
-    text-decoration-color 0.2s,
-    transform 0.2s;
-}
-
-.th-text:hover {
-  color: var(--ev-c-pink);
-  text-decoration-color: transparent;
-  text-shadow: 0 0 5px color-mix(in srgb, var(--ev-c-pink) 55%, transparent);
-  transform: scale(1.08);
-}
-
-.th-text-static {
-  cursor: default;
-}
-
-.sort-icon {
-  font-size: 10px;
-  opacity: 0.55;
-  margin-left: 2px;
-  cursor: pointer;
-  display: inline-block;
-  width: 10px;
-  color: #fff;
-  transition:
-    opacity 0.2s,
-    transform 0.2s,
-    color 0.2s;
-  vertical-align: middle;
-}
-
-.sort-icon:hover,
-.sort-icon.sort-active {
-  opacity: 1;
-  transform: scale(1.5);
-  color: var(--ev-c-pink);
-}
-
-.clickable-th:hover .sort-icon:not(.sort-active) {
-  opacity: 0.8;
 }
 
 .clear-all-btn {
@@ -2165,138 +1237,5 @@ onUnmounted(() => {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-}
-
-.code-sub {
-  font-size: 10px;
-  color: #888;
-  margin-top: 2px;
-}
-
-/* Base font size for other cells */
-.stock-table td {
-  font-size: 12px;
-}
-
-.name-cell {
-  white-space: nowrap;
-  text-align: center !important;
-  font-size: 10px; /* Reduced font size for Name column */
-}
-
-/* 数值列字号统一加大（原 nth-child(2/3/4) 行为，改为基于列 class，
-   避免列重排后 nth-child 索引错位） */
-.stock-table td.col-price,
-.stock-table td.col-num {
-  font-size: 14px;
-}
-
-/* 涨跌幅独立列样式 */
-.chg-cell {
-  text-align: center;
-  font-size: 14px !important;
-}
-
-/* T.PnL 列在拆分涨跌幅时变为第5列，需要保持字体 */
-.tpnl-cell {
-  font-size: 14px !important;
-}
-.price-cell {
-  cursor: pointer;
-}
-.price-cell:active {
-  opacity: 0.6;
-}
-
-.clickable-cell {
-  cursor: pointer;
-}
-
-/* 列表交互增强 */
-.stock-table tr {
-  transition: background-color 0.2s;
-  cursor: default;
-}
-
-.stock-table tbody tr:nth-child(even) {
-  background-color: rgba(255, 255, 255, 0.03);
-}
-
-.stock-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.row-selected {
-  background-color: rgba(46, 204, 113, 0.1) !important;
-  border-radius: 6px;
-}
-
-.clickable-tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  height: 18px;
-  background-color: rgba(255, 255, 255, 0.06);
-  border-radius: 4px;
-  min-width: 22px;
-  transition: all 0.2s;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  vertical-align: middle;
-}
-
-.clickable-tag:hover {
-  cursor: pointer;
-  background-color: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
-}
-
-.clickable-cell .clickable-tag {
-  color: #c084fc;
-}
-
-/* 价格提醒样式 - 黄色系 */
-.alert-active {
-  color: #f1c40f !important;
-  background-color: rgba(241, 196, 15, 0.15);
-  border-color: rgba(241, 196, 15, 0.3);
-}
-
-.alert-text {
-  font-size: 10px;
-}
-
-.alert-placeholder {
-  font-size: 10px;
-  font-weight: bold;
-  opacity: 0.8;
-  color: #f1c40f;
-}
-
-.clickable-cell .alert-active:hover {
-  background-color: rgba(241, 196, 15, 0.25);
-  border-color: rgba(241, 196, 15, 0.5);
-  color: #ffd700 !important;
-}
-
-@keyframes modalSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 </style>
