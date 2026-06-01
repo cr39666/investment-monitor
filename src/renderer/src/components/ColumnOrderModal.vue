@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, onBeforeUnmount } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Toast from './Toast.vue'
 import {
@@ -27,19 +27,21 @@ const emit = defineEmits<{
 
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
 
-// 当前编辑的列顺序（按 type 加载）
-const stockOrder = ref<StockColumnKey[]>([...STOCK_COLUMNS_DEFAULT])
-const fundOrder = ref<FundColumnKey[]>([...FUND_COLUMNS_DEFAULT])
-
 // 拆分列（仅股票有）：'chg' | 'dpnl' | 'pnl' | 'val'
 type SplitKey = 'chg' | 'dpnl' | 'pnl' | 'val'
-const splitColumns = ref<SplitKey[]>([])
+const SPLIT_KEYS: SplitKey[] = ['chg', 'dpnl', 'pnl', 'val']
 
-// 拆分列归属于哪个主列：决定 split chip 跟在哪个主列后面
-//   chg     → 跟随 price
-//   dpnl    → 跟随 dpnl
-//   pnl     → 跟随 tpnl
-//   val     → 跟随 avg
+// 扁平列表项：主列或拆分列
+type ColumnItem = { type: 'main'; key: StockColumnKey } | { type: 'split'; key: SplitKey }
+
+// 编辑态扁平列表（主列+启用拆分列，可整体拖拽）
+const stockItems = ref<ColumnItem[]>([])
+const fundOrder = ref<FundColumnKey[]>([...FUND_COLUMNS_DEFAULT])
+
+// 启用的拆分列 key 集合（用于判断某拆分是否启用）
+const enabledSplits = ref<Set<SplitKey>>(new Set())
+
+// 拆分列归属于哪个主列
 const splitParent: Record<SplitKey, StockColumnKey> = {
   chg: 'price',
   dpnl: 'dpnl',
@@ -47,7 +49,7 @@ const splitParent: Record<SplitKey, StockColumnKey> = {
   val: 'avg'
 }
 
-// 主列 chip 标签：与 MainList 双显模式表头左半保持一致
+// 主列 chip 标签
 const stockColLabel: Record<StockColumnKey, string> = {
   name: 'thName',
   price: 'thPrice',
@@ -57,7 +59,7 @@ const stockColLabel: Record<StockColumnKey, string> = {
   qty: 'thQty'
 }
 
-// 拆分副列 chip 标签：与 MainList 双显模式表头右半保持一致
+// 拆分副列 chip 标签
 const splitColLabel: Record<SplitKey, string> = {
   chg: 'thChg',
   dpnl: 'thDPnlPct',
@@ -65,7 +67,7 @@ const splitColLabel: Record<SplitKey, string> = {
   val: 'thVal'
 }
 
-// 顶部"启用/关闭 拆分列"开关 chip 标签：与 MainList 双显模式表头完整文案保持一致
+// 顶部"启用/关闭 拆分列"开关 chip 标签
 const splitToggleLabel: Record<SplitKey, string> = {
   chg: 'thPriceChg',
   dpnl: 'thDPnlBoth',
@@ -82,38 +84,13 @@ const fundColLabel: Record<FundColumnKey, string> = {
   last: 'colLast'
 }
 
-// ===== 渲染所需：把每个主列与（如启用的）副列拼成 chip 行 =====
-type MainChip = { kind: 'main'; key: StockColumnKey; idx: number; displayIndex: number }
-type SplitChip = { kind: 'split'; key: SplitKey }
-type StockChip = MainChip | SplitChip
-
-const SPLIT_KEYS: SplitKey[] = ['chg', 'dpnl', 'pnl', 'val']
-
-// 计算最终展示序列：主列按 stockOrder，命中的拆分副列紧跟其父列后面
-const stockChips = computed<StockChip[]>(() => {
-  const chips: StockChip[] = []
-  let displayIndex = 0
-  stockOrder.value.forEach((key, idx) => {
-    displayIndex += 1
-    chips.push({ kind: 'main', key, idx, displayIndex })
-    SPLIT_KEYS.forEach((s) => {
-      if (splitParent[s] === key && splitColumns.value.includes(s)) {
-        displayIndex += 1
-        chips.push({ kind: 'split', key: s })
-      }
-    })
-  })
-  return chips
-})
-
-// ====== 拖拽（仅主列可拖） ======
+// ====== 拖拽（所有 chip 均可拖） ======
 const draggingIndex = ref<number | null>(null)
 
 const onDragStart = (index: number, e: DragEvent) => {
   draggingIndex.value = index
   if (e.dataTransfer) {
     e.dataTransfer.effectAllowed = 'move'
-    // Firefox 需要 setData 才能触发拖拽
     e.dataTransfer.setData('text/plain', String(index))
   }
 }
@@ -123,17 +100,17 @@ const onDragOver = (e: DragEvent) => {
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
 }
 
-// 主列 drop：在主列序列中重排（仅本地状态，不立即持久化）
-const onDropMain = (targetIndex: number) => {
+// 通用 drop：在 stockItems 或 fundOrder 中重排
+const onDrop = (targetIndex: number) => {
   const src = draggingIndex.value
   draggingIndex.value = null
   if (src === null || src === targetIndex) return
 
   if (props.type === 'stock') {
-    const arr = [...stockOrder.value]
+    const arr = [...stockItems.value]
     const [moved] = arr.splice(src, 1)
     arr.splice(targetIndex, 0, moved)
-    stockOrder.value = arr
+    stockItems.value = arr
   } else {
     const arr = [...fundOrder.value]
     const [moved] = arr.splice(src, 1)
@@ -148,16 +125,24 @@ const onDragEnd = () => {
 
 // ====== 副列点击切换拆分（仅本地状态） ======
 const toggleSplit = (key: SplitKey) => {
-  const idx = splitColumns.value.indexOf(key)
-  if (idx >= 0) splitColumns.value.splice(idx, 1)
-  else splitColumns.value.push(key)
+  if (enabledSplits.value.has(key)) {
+    // 禁用：从启用集合移除，并从 stockItems 移除
+    enabledSplits.value.delete(key)
+    stockItems.value = stockItems.value.filter(
+      (item) => !(item.type === 'split' && item.key === key)
+    )
+  } else {
+    // 启用：加入启用集合，并追加到 stockItems 末尾
+    enabledSplits.value.add(key)
+    stockItems.value.push({ type: 'split', key })
+  }
 }
 
-// ====== 重置（仅本地状态，需点击 ✅ 才生效） ======
+// ====== 重置 ======
 const reset = () => {
   if (props.type === 'stock') {
-    stockOrder.value = [...STOCK_COLUMNS_DEFAULT]
-    splitColumns.value = []
+    stockItems.value = STOCK_COLUMNS_DEFAULT.map((k) => ({ type: 'main' as const, key: k }))
+    enabledSplits.value = new Set()
   } else {
     fundOrder.value = [...FUND_COLUMNS_DEFAULT]
   }
@@ -181,23 +166,42 @@ const loadSplitColumns = (): SplitKey[] => {
   }
 }
 
-// ====== 提交：点击 ✅ 时统一保存并通知 ======
+// 从 stockItems 提取 stockOrder（主列顺序）和 splitColumns（启用的拆分列）
+const extractStockState = (): { order: StockColumnKey[]; splits: SplitKey[] } => {
+  const order: StockColumnKey[] = []
+  const splits: SplitKey[] = []
+  stockItems.value.forEach((item) => {
+    if (item.type === 'main') order.push(item.key)
+    else splits.push(item.key)
+  })
+  return { order, splits }
+}
+
+// ====== 提交 ======
 const commit = () => {
   if (props.type === 'stock') {
-    saveStockColumnOrder(stockOrder.value)
-    localStorage.setItem('stock_splitColumns', JSON.stringify(splitColumns.value))
+    // 保存完整列顺序（主列+拆分列）到 stock_columnOrderFull
+    // 格式：['name', 'price', 'split:chg', 'dpnl', ...]
+    const fullOrder = stockItems.value.map((item) =>
+      item.type === 'main' ? item.key : `split:${item.key}`
+    )
+    localStorage.setItem('stock_columnOrderFull', JSON.stringify(fullOrder))
+    // 同时保存主列顺序（兼容旧逻辑）和启用拆分列
+    const { order, splits } = extractStockState()
+    saveStockColumnOrder(order)
+    localStorage.setItem('stock_splitColumns', JSON.stringify(splits))
   } else {
     saveFundColumnOrder(fundOrder.value)
   }
   window.dispatchEvent(new Event('column-order-changed'))
 }
 
-// ❌ 关闭 = 取消（不保存）
+// ❌ 关闭 = 取消
 const cancel = () => {
   emit('close')
 }
 
-// ✅ 关闭 = 提交（保存）
+// ✅ 关闭 = 提交
 const confirm = () => {
   commit()
   emit('close')
@@ -216,14 +220,58 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 }
 
+// 初始化 stockItems：从存储加载完整列顺序（主列+拆分列）
+const initStockItems = () => {
+  // 优先从 stock_columnOrderFull 加载完整顺序
+  const fullRaw = localStorage.getItem('stock_columnOrderFull')
+  if (fullRaw) {
+    try {
+      const fullOrder: string[] = JSON.parse(fullRaw)
+      const items: ColumnItem[] = []
+      const splits = new Set<SplitKey>()
+      fullOrder.forEach((key) => {
+        if (key.startsWith('split:')) {
+          const sk = key.slice(6) as SplitKey
+          if (SPLIT_KEYS.includes(sk)) {
+            items.push({ type: 'split', key: sk })
+            splits.add(sk)
+          }
+        } else if (STOCK_COLUMNS_DEFAULT.includes(key as StockColumnKey)) {
+          items.push({ type: 'main', key: key as StockColumnKey })
+        }
+      })
+      stockItems.value = items
+      enabledSplits.value = splits
+      return
+    } catch {
+      // 解析失败，降级使用旧格式
+    }
+  }
+  // 降级：从旧格式加载（主列顺序 + 启用拆分列）
+  const order = loadStockColumnOrder()
+  const splitsArr = loadSplitColumns()
+  enabledSplits.value = new Set(splitsArr)
+  const items: ColumnItem[] = []
+  order.forEach((mainKey) => {
+    items.push({ type: 'main', key: mainKey })
+    splitsArr.forEach((sk) => {
+      if (splitParent[sk] === mainKey) {
+        items.push({ type: 'split', key: sk })
+      }
+    })
+  })
+  stockItems.value = items
+}
+
 watch(
   () => props.show,
   (newShow) => {
     if (newShow) {
-      // 每次打开都从存储重新加载，避免外部其他入口修改后状态不同步
-      stockOrder.value = loadStockColumnOrder()
-      fundOrder.value = loadFundColumnOrder()
-      splitColumns.value = loadSplitColumns()
+      if (props.type === 'stock') {
+        initStockItems()
+      } else {
+        fundOrder.value = loadFundColumnOrder()
+      }
       window.addEventListener('keydown', handleKeydown, true)
     } else {
       window.removeEventListener('keydown', handleKeydown, true)
@@ -261,43 +309,48 @@ onBeforeUnmount(() => {
                     v-for="sk in SPLIT_KEYS"
                     :key="`tg-${sk}`"
                     class="split-toggle-chip"
-                    :class="{ active: splitColumns.includes(sk) }"
+                    :class="{ active: enabledSplits.has(sk) }"
                     @click="toggleSplit(sk)"
                     >{{ t(splitToggleLabel[sk]) }}</span
                   >
                 </div>
               </div>
 
-              <!-- 下方主列拖拽提示 + 右侧重置按钮 -->
+              <!-- 下方拖拽提示 + 右侧重置按钮 -->
               <div class="hint-row">
                 <p class="modal-hint-text">{{ t('columnOrderHintReorder') }}</p>
                 <span class="reset-inline-btn" :title="t('columnOrderReset')" @click="reset">↺</span>
               </div>
 
-              <!-- 股票列：主列可拖，副列紧跟其后，可点击切换 -->
+              <!-- 股票列：主列和拆分列均可拖拽 -->
               <div class="col-list">
-                <template v-for="(chip, i) in stockChips" :key="`s-${i}-${chip.kind}-${chip.key}`">
+                <template v-for="(item, i) in stockItems" :key="`si-${i}-${item.type}-${item.key}`">
                   <span
-                    v-if="chip.kind === 'main'"
+                    v-if="item.type === 'main'"
                     class="col-chip"
-                    :class="{ dragging: draggingIndex === chip.idx }"
+                    :class="{ dragging: draggingIndex === i }"
                     draggable="true"
-                    @dragstart="onDragStart(chip.idx, $event)"
+                    @dragstart="onDragStart(i, $event)"
                     @dragover="onDragOver"
-                    @drop="onDropMain(chip.idx)"
+                    @drop="onDrop(i)"
                     @dragend="onDragEnd"
                   >
-                    <span class="col-chip-index">{{ chip.displayIndex }}</span>
-                    {{ t(stockColLabel[chip.key]) }}
+                    <span class="col-chip-index">{{ i + 1 }}</span>
+                    {{ t(stockColLabel[item.key]) }}
                   </span>
                   <span
                     v-else
                     class="col-chip col-chip-split active"
                     :title="t('columnOrderSplitToggle')"
-                    @click="toggleSplit(chip.key)"
+                    draggable="true"
+                    @dragstart="onDragStart(i, $event)"
+                    @dragover="onDragOver"
+                    @drop="onDrop(i)"
+                    @dragend="onDragEnd"
+                    @click="toggleSplit(item.key)"
                   >
                     <span class="col-chip-marker">+</span>
-                    {{ t(splitColLabel[chip.key]) }}
+                    {{ t(splitColLabel[item.key]) }}
                   </span>
                 </template>
               </div>
@@ -319,7 +372,7 @@ onBeforeUnmount(() => {
                   draggable="true"
                   @dragstart="onDragStart(idx, $event)"
                   @dragover="onDragOver"
-                  @drop="onDropMain(idx)"
+                  @drop="onDrop(idx)"
                   @dragend="onDragEnd"
                 >
                   <span class="col-chip-index">{{ idx + 1 }}</span>

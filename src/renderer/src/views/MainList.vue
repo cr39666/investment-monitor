@@ -74,13 +74,11 @@ let resizeObserver: ResizeObserver | null = null
 
 // 拆分列（涨跌幅/日盈比/总盈比/市值）— 多选数组
 const splitColumns = ref<string[]>([])
-const splitChg = computed(() => splitColumns.value.includes('chg'))
-const splitDpnl = computed(() => splitColumns.value.includes('dpnl'))
-const splitPnl = computed(() => splitColumns.value.includes('pnl'))
-const splitVal = computed(() => splitColumns.value.includes('val'))
 
 // 自定义列顺序（持久化到 localStorage，由设置页拖拽调整）
 const columnOrder = ref<StockColumnKey[]>(loadStockColumnOrder())
+// 完整列顺序（主列+拆分列，新格式）
+const fullColumnOrder = ref<string[]>([])
 // 同时刷新拆分列（弹窗内可同时调整列顺序和拆分列）
 const reloadSplitColumns = () => {
   const splitSaved = localStorage.getItem('stock_splitColumns')
@@ -97,9 +95,35 @@ const reloadSplitColumns = () => {
     splitColumns.value = splitSaved === 'true' ? ['chg', 'pnl', 'val'] : []
   }
 }
+// 加载完整列顺序（从 stock_columnOrderFull）
+const loadFullColumnOrder = () => {
+  const raw = localStorage.getItem('stock_columnOrderFull')
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        fullColumnOrder.value = parsed.filter((k: unknown): k is string => typeof k === 'string')
+        return
+      }
+    } catch {
+      // 忽略
+    }
+  }
+  // 降级：使用 columnOrder + splitColumns 构造
+  fullColumnOrder.value = []
+  columnOrder.value.forEach((mainKey) => {
+    fullColumnOrder.value.push(mainKey as string)
+    splitColumns.value.forEach((sk) => {
+      // 简单处理：拆分列跟在父主列后（降级兼容）
+      const parentMap: Record<string, string> = { chg: 'price', dpnl: 'dpnl', pnl: 'tpnl', val: 'avg' }
+      if (parentMap[sk] === mainKey) fullColumnOrder.value.push(`split:${sk}`)
+    })
+  })
+}
 const onColumnOrderChanged = () => {
   columnOrder.value = loadStockColumnOrder()
   reloadSplitColumns()
+  loadFullColumnOrder()
 }
 
 // Qty 列的展示模式：0=持仓手数, 1=价格提醒
@@ -852,6 +876,9 @@ onMounted(async () => {
     }
   }
 
+  // 加载完整列顺序（必须在 splitColumns 加载后）
+  loadFullColumnOrder()
+
   fetchQuotes(true) // 初始强制获取一次，不论是否在交易时间
   // 用链式 setTimeout 取代 setInterval：
   //   1. 上一轮请求完成后再触发下一轮，避免弱网时请求堆积
@@ -913,7 +940,7 @@ onUnmounted(() => {
     <div class="table-container">
       <HoldingStockTable
         v-if="stockPageMode === 'holding'"
-        :column-order="columnOrder"
+        :full-column-order="fullColumnOrder"
         :stocks="stocks"
         :display-stocks="displayStocks"
         :selected-codes="selectedCodes"
@@ -925,10 +952,6 @@ onUnmounted(() => {
         :tpnl-display-mode="tpnlDisplayMode"
         :avg-display-mode="avgDisplayMode"
         :qty-display-mode="qtyDisplayMode"
-        :split-chg="splitChg"
-        :split-dpnl="splitDpnl"
-        :split-pnl="splitPnl"
-        :split-val="splitVal"
         :sort-column="sortColumn"
         :sort-order="sortOrder"
         :t="t"
@@ -1150,6 +1173,7 @@ onUnmounted(() => {
 
 .table-container {
   flex: 1;
+  min-width: 240px;
 }
 
 .summary-section {

@@ -20,7 +20,7 @@ const emit = defineEmits<{
 
 <template>
   <table class="stock-table watch-table">
-    <thead>
+    <thead v-if="watchStocks.length > 0">
       <tr>
         <th :title="t('name')" class="col-name">{{ t('thName') }}</th>
         <th :title="t('currentPrice')" class="col-price">{{ t('thPrice') }}</th>
@@ -62,7 +62,8 @@ const emit = defineEmits<{
         </td>
         <td class="col-num" :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
           <span v-if="quotes[stock.code]">
-            {{ quotes[stock.code].changeAmount > 0 ? '+' : '' }}{{ quotes[stock.code].changeAmount.toFixed(2) }}
+            {{ quotes[stock.code].changeAmount > 0 ? '+' : ''
+            }}{{ quotes[stock.code].changeAmount.toFixed(2) }}
           </span>
           <span v-else>--</span>
         </td>
@@ -100,10 +101,6 @@ const emit = defineEmits<{
 .stock-table td.col-price,
 .stock-table td:last-child {
   text-align: center;
-}
-
-.watch-table {
-  min-width: 240px;
 }
 
 .empty-row {

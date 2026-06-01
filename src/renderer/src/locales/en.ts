@@ -38,7 +38,7 @@ export default {
   columnCustomize: 'Customize Columns',
   resetData: 'Reset Data',
   resetStockConfirm:
-    'This operation will clear all [Stock Holdings, Watch List] data. You need to manually re-add them. Confirm reset?',
+    'This operation will clear all [Stock Holdings, Follows List] data. You need to manually re-add them. Confirm reset?',
   resetGoldConfirm:
     'This operation will clear all [Gold Holdings] data. You need to manually re-add them. Confirm reset?',
   resetFundConfirm:
@@ -76,8 +76,8 @@ export default {
 
   // MainList.vue
   stock: 'Stock',
-  stockHolding: 'Stock - Holding',
-  stockWatch: 'Stock - Follows',
+  stockHolding: 'Stock-Holdings',
+  stockWatch: 'Stock-Follows',
   name: 'Stock Name',
   code: 'Add Holding',
   currentPrice: 'Current Price',
@@ -113,8 +113,8 @@ export default {
   thAlert: 'Alert🔔',
   labelD: 'D:',
   labelH: 'H:',
-  noStocks: 'no stocks',
-  noWatchStocks: 'no watch stocks',
+  noStocks: 'No Holdings',
+  noWatchStocks: 'No Follows',
   watchStockCode: 'Add Follow',
   backToBall: 'Back to ball',
   goToSetting: 'settings',
@@ -125,15 +125,15 @@ export default {
   clickToAdjust: 'Click to adjust quantity',
   stockExists: 'Stock already exists',
   stockAdded: 'Stock Added!',
-  watchStockExists: 'Watch stock already exists',
-  watchStockAdded: 'Watch Stock Added!',
+  watchStockExists: 'Follow stock already exists',
+  watchStockAdded: 'Follow Stock Added!',
   selectedRemoved: 'Selected Stocks Removed',
   allCleared: 'All Stocks Cleared',
   positionUpdated: 'Position Updated',
   amountCannotBeNegative: 'Position cannot be negative',
-  switchToWatchStocks: 'Switch to Watchlist',
+  switchToWatchStocks: 'Switch to Followlist',
   switchToHoldings: 'Switch to Holdings',
-  clearWatchConfirm: 'Are you sure you want to clear all watch list data?',
+  clearWatchConfirm: 'Are you sure you want to clear all follow list data?',
 
   // Price Alert
   priceAlert: 'Price Alert',
