@@ -70,8 +70,10 @@ export default {
 
   // MainList.vue
   stock: 'Stock',
+  stockHolding: 'Stock - Holding',
+  stockWatch: 'Stock - Follows',
   name: '股票名称',
-  code: 'Stock Code',
+  code: 'Add Holding',
   currentPrice: '当前价',
   priceAndChange: '当前价/涨跌幅',
   dailyPnl: '当日盈亏',
@@ -105,7 +107,7 @@ export default {
   labelH: 'H:',
   noStocks: '暂无股票',
   noWatchStocks: '暂无观察股票',
-  watchStockCode: 'Watch Code',
+  watchStockCode: 'Add Follow',
   backToBall: '返回悬浮球',
   goToSetting: '设置',
   deleteSelected: '删除选中 Delete',
