@@ -72,8 +72,10 @@ export default {
 
   // MainList.vue
   stock: 'Stock',
+  stockHolding: 'Stock - Holding',
+  stockWatch: 'Stock - Follows',
   name: 'Stock Name',
-  code: 'Stock Code',
+  code: 'Add Holding',
   currentPrice: 'Current Price',
   priceAndChange: 'Price / Change',
   dailyPnl: 'Daily PnL',
@@ -109,7 +111,7 @@ export default {
   labelH: 'H:',
   noStocks: 'no stocks',
   noWatchStocks: 'no watch stocks',
-  watchStockCode: 'Watch Code',
+  watchStockCode: 'Add Follow',
   backToBall: 'Back to ball',
   goToSetting: 'settings',
   deleteSelected: 'Delete Selected',

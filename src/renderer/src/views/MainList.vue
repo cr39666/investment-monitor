@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ModuleNavBar from '../components/ModuleNavBar.vue'
@@ -21,6 +21,11 @@ import { useStockWatchlist } from '../composables/useStockWatchlist'
 import type { StockItem, StockPageMode } from '../types/stock'
 
 const { t } = useI18n()
+
+// 页面标题：根据 stockPageMode 动态显示
+const pageTitle = computed(() => {
+  return stockPageMode.value === 'holding' ? t('stockHolding') : t('stockWatch')
+})
 
 const inputCode = ref('')
 const stocks = ref<StockItem[]>([])
@@ -903,7 +908,7 @@ onUnmounted(() => {
 <template>
   <div ref="containerRef" class="main-list-container">
     <ModuleNavBar current="stock">
-      <template #navLabel>{{ t('stock') }}</template>
+      <template #navLabel>{{ pageTitle }}</template>
     </ModuleNavBar>
     <div class="table-container">
       <HoldingStockTable
