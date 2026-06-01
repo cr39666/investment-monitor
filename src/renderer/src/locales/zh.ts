@@ -37,7 +37,9 @@ export default {
   columnOrderModalFundTitle: '基金列自定义',
   columnCustomize: '列表列自定义',
   resetData: '重置数据',
-  resetDataConfirm: '此操作会将{module}数据全部清除，需要重新手动添加，确认重置？',
+  resetStockConfirm: '此操作会将【股票持仓、观察列表】全部数据清空，需要手动重新添加，确认重置？',
+  resetGoldConfirm: '此操作会将【黄金持仓】全部数据清空，需要手动重新添加，确认重置？',
+  resetFundConfirm: '此操作会将【基金列表】全部数据清空，需要手动重新添加，确认重置？',
   resetDataDone: '已重置{module}数据',
   columnOrderReset: '重置',
   columnOrderResetDone: '已重置为默认',
@@ -126,7 +128,7 @@ export default {
   amountCannotBeNegative: '持仓手数不能小于0',
   switchToWatchStocks: '切换到观察页',
   switchToHoldings: '切换到持仓页',
-  clearWatchConfirm: '确定要清空所有观察股票吗？',
+  clearWatchConfirm: '确认要清空观察列表所有数据吗？',
 
   // Price Alert
   priceAlert: '价格提醒',
@@ -170,7 +172,7 @@ export default {
   deleteStock: '删除股票',
   deleteConfirm: '确定要删除选中的 {count} 只股票吗？',
   clearList: '清空列表',
-  clearConfirm: '确定要清空列表中的所有股票吗？',
+  clearConfirm: '确认要清空持仓列表所有数据吗？',
 
   // FloatingBall.vue
   dragToMove: '拖拽移动，左击展开，右击菜单',
@@ -206,7 +208,7 @@ export default {
   addPos: '加仓',
   reducePos: '减仓',
   clearPos: '清仓',
-  clearGoldConfirm: '确定要清空所有黄金持仓吗？',
+  clearGoldConfirm: '确认要清空黄金持仓所有数据吗？',
   viewGoldHolding: '查看黄金持仓',
   collapseGoldHolding: '收起黄金持仓',
   clickToTogglePnL: '点击切换盈亏显示',
@@ -233,7 +235,7 @@ export default {
   fundNav: '最新净值',
   deleteFund: '删除基金',
   deleteFundConfirm: '确定要删除选中的 {count} 只基金吗？',
-  clearFundConfirm: '确定要清空列表中的所有基金吗？',
+  clearFundConfirm: '确认要清空基金列表所有数据吗？',
   addFundPosition: '添加基金持仓',
   editFundPosition: '编辑持仓',
   fundCostNav: '成本净值',

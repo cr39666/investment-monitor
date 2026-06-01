@@ -144,15 +144,14 @@ const changeBallDisplayMode = (mode: string) => {
 type ResetDataType = 'stock' | 'gold' | 'fund'
 
 const resetData = async (type: ResetDataType) => {
-  const moduleName = type === 'stock' ? t('moduleStock') : type === 'gold' ? t('moduleGold') : t('moduleFund')
-  const confirmed = await confirmRef.value?.open(
-    t('resetData'),
-    t('resetDataConfirm', { module: moduleName })
-  )
+  const confirmKey =
+    type === 'stock' ? 'resetStockConfirm' : type === 'gold' ? 'resetGoldConfirm' : 'resetFundConfirm'
+  const confirmed = await confirmRef.value?.open(t('resetData'), t(confirmKey))
   if (!confirmed) return
 
   if (type === 'stock') {
     localStorage.removeItem('my_stocks')
+    localStorage.removeItem('watch_stocks')
     localStorage.removeItem('cached_quotes')
     localStorage.removeItem('cached_quotes_date')
   } else if (type === 'gold') {
@@ -163,6 +162,7 @@ const resetData = async (type: ResetDataType) => {
     localStorage.removeItem('my_funds')
   }
 
+  const moduleName = type === 'stock' ? t('moduleStock') : type === 'gold' ? t('moduleGold') : t('moduleFund')
   toastRef.value?.show(t('resetDataDone', { module: moduleName }), 'success')
 }
 
