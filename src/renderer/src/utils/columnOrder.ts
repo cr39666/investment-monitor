@@ -1,5 +1,6 @@
-// 股票/基金列表的可自定义列顺序（仅"主列"，拆分出来的副列固定跟随主列）
+// 股票/基金列表的可自定义列顺序
 // 设置页通过 localStorage 持久化用户调整后的顺序
+// 支持将副列（涨跌幅/日盈比/总盈比/市值）拆分成独立列，可拖拽排序
 
 // ========== 股票主列 ==========
 // name: 名称/代码
@@ -10,6 +11,9 @@
 // qty : 持仓手数/价格提醒
 export type StockColumnKey = 'name' | 'price' | 'dpnl' | 'tpnl' | 'avg' | 'qty'
 export const STOCK_COLUMNS_DEFAULT: StockColumnKey[] = ['name', 'price', 'dpnl', 'tpnl', 'avg', 'qty']
+
+// 股票拆分列（可从主列拆出成为独立列）
+export type SplitKey = 'chg' | 'dpnl' | 'pnl' | 'val'
 
 // ========== 基金主列 ==========
 // name : 名称/代码
