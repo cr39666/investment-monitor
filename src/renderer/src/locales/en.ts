@@ -37,8 +37,12 @@ export default {
   columnOrderModalFundTitle: 'Fund Columns',
   columnCustomize: 'Customize Columns',
   resetData: 'Reset Data',
-  resetDataConfirm:
-    'This will clear all {module} data. You will need to add it manually again. Confirm reset?',
+  resetStockConfirm:
+    'This operation will clear all [Stock Holdings, Watch List] data. You need to manually re-add them. Confirm reset?',
+  resetGoldConfirm:
+    'This operation will clear all [Gold Holdings] data. You need to manually re-add them. Confirm reset?',
+  resetFundConfirm:
+    'This operation will clear all [Fund List] data. You need to manually re-add them. Confirm reset?',
   resetDataDone: '{module} data reset',
   columnOrderReset: 'Reset',
   columnOrderResetDone: 'Restored default order',
@@ -129,7 +133,7 @@ export default {
   amountCannotBeNegative: 'Position cannot be negative',
   switchToWatchStocks: 'Switch to Watchlist',
   switchToHoldings: 'Switch to Holdings',
-  clearWatchConfirm: 'Are you sure you want to clear all watch stocks?',
+  clearWatchConfirm: 'Are you sure you want to clear all watch list data?',
 
   // Price Alert
   priceAlert: 'Price Alert',
@@ -173,7 +177,7 @@ export default {
   deleteStock: 'Delete Stock',
   deleteConfirm: 'Are you sure you want to delete {count} selected stock(s)?',
   clearList: 'Clear List',
-  clearConfirm: 'Are you sure you want to clear all stocks?',
+  clearConfirm: 'Are you sure you want to clear all holding data?',
 
   // FloatingBall.vue
   dragToMove: 'Drag to move, left click to expand, right click for menu',
@@ -209,7 +213,7 @@ export default {
   addPos: 'Add',
   reducePos: 'Reduce',
   clearPos: 'Clear',
-  clearGoldConfirm: 'Clear all gold holdings?',
+  clearGoldConfirm: 'Are you sure you want to clear all gold holding data?',
   viewGoldHolding: 'View Gold Holding',
   collapseGoldHolding: 'Collapse Gold Holding',
   clickToTogglePnL: 'Click to toggle PnL display',
@@ -237,7 +241,7 @@ export default {
   fundNav: 'Net Asset Value',
   deleteFund: 'Delete Fund',
   deleteFundConfirm: 'Are you sure you want to delete {count} selected fund(s)?',
-  clearFundConfirm: 'Are you sure you want to clear all funds?',
+  clearFundConfirm: 'Are you sure you want to clear all fund data?',
   addFundPosition: 'Add Fund Position',
   editFundPosition: 'Edit Position',
   fundCostNav: 'Cost NAV',
