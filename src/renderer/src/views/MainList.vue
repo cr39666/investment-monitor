@@ -7,6 +7,7 @@ import WatchStockTable from '../components/WatchStockTable.vue'
 import Modal from '../components/Modal.vue'
 import Confirm from '../components/Confirm.vue'
 import Toast from '../components/Toast.vue'
+import AdjustmentHistoryModal from '../components/AdjustmentHistoryModal.vue'
 import { loadStockColumnOrder, type StockColumnKey } from '../utils/columnOrder'
 import { normalizeStockCode } from '../utils/stockCode'
 import {
@@ -18,7 +19,13 @@ import {
 } from '../utils/stockCalc'
 import { useStockQuotes } from '../composables/useStockQuotes'
 import { useStockWatchlist } from '../composables/useStockWatchlist'
-import type { StockItem, StockPageMode } from '../types/stock'
+import type {
+  StockAdjustmentDirection,
+  StockAdjustmentRecord,
+  StockAdjustmentSnapshot,
+  StockItem,
+  StockPageMode
+} from '../types/stock'
 
 const { t } = useI18n()
 
@@ -324,6 +331,7 @@ const toggleStockPageMode = () => {
 const modalRef = ref<InstanceType<typeof Modal> | null>(null)
 const confirmRef = ref<InstanceType<typeof Confirm> | null>(null)
 const toastRef = ref<InstanceType<typeof Toast> | null>(null)
+const adjustmentHistoryRef = ref<InstanceType<typeof AdjustmentHistoryModal> | null>(null)
 // --------------------------
 const formatName = (name: string | undefined): string => {
   if (!name) return '--'
@@ -331,6 +339,67 @@ const formatName = (name: string | undefined): string => {
     return name.slice(0, 4) + '...'
   }
   return name
+}
+
+const adjustmentSnapshotKeys: (keyof StockAdjustmentSnapshot)[] = [
+  'cost',
+  'amount',
+  'buyDate',
+  'isNew',
+  'realizedPnl',
+  'positionCostBasis',
+  'totalCostBasis',
+  'dailyRealizedPnl',
+  'dailyDate',
+  'dailyBasis'
+]
+
+const createAdjustmentSnapshot = (stock: StockItem): StockAdjustmentSnapshot => ({
+  cost: stock.cost,
+  amount: stock.amount,
+  buyDate: stock.buyDate,
+  isNew: stock.isNew,
+  realizedPnl: stock.realizedPnl,
+  positionCostBasis: stock.positionCostBasis,
+  totalCostBasis: stock.totalCostBasis,
+  dailyRealizedPnl: stock.dailyRealizedPnl,
+  dailyDate: stock.dailyDate,
+  dailyBasis: stock.dailyBasis
+})
+
+const restoreAdjustmentSnapshot = (stock: StockItem, snapshot: StockAdjustmentSnapshot) => {
+  const writableStock = stock as unknown as Record<keyof StockAdjustmentSnapshot, unknown>
+  adjustmentSnapshotKeys.forEach((key) => {
+    const value = snapshot[key]
+    if (value === undefined) {
+      delete writableStock[key]
+    } else {
+      writableStock[key] = value
+    }
+  })
+}
+
+const snapshotsEqual = (stock: StockItem, snapshot: StockAdjustmentSnapshot): boolean => {
+  const current = createAdjustmentSnapshot(stock)
+  return adjustmentSnapshotKeys.every((key) => current[key] === snapshot[key])
+}
+
+const pruneAdjustmentRecords = (stock: StockItem, today = getTodayStr()): boolean => {
+  if (!stock.adjustmentRecords?.length) return false
+  const todayRecords = stock.adjustmentRecords.filter((record) => record.date === today)
+  if (todayRecords.length === stock.adjustmentRecords.length) return false
+  if (todayRecords.length > 0) stock.adjustmentRecords = todayRecords
+  else delete stock.adjustmentRecords
+  return true
+}
+
+const getTodayAdjustmentRecords = (stock: StockItem): StockAdjustmentRecord[] => {
+  const today = getTodayStr()
+  return stock.adjustmentRecords?.filter((record) => record.date === today) || []
+}
+
+const addAdjustmentRecord = (stock: StockItem, record: StockAdjustmentRecord) => {
+  stock.adjustmentRecords = [...getTodayAdjustmentRecords(stock), record]
 }
 
 // 加载本地存储
@@ -349,6 +418,9 @@ const loadStocks = () => {
         }
         if (s.totalCostBasis === undefined && currentBasis > 0) {
           s.totalCostBasis = currentBasis
+          changed = true
+        }
+        if (pruneAdjustmentRecords(s)) {
           changed = true
         }
       })
@@ -372,6 +444,9 @@ const resetDailyRealizedPnl = () => {
         stock.dailyDate = today
         changed = true
       }
+    }
+    if (pruneAdjustmentRecords(stock, today)) {
+      changed = true
     }
   })
   if (changed) saveStocks()
@@ -632,6 +707,13 @@ const adjustStockFlow = async (stock: StockItem) => {
       stock.dailyBasis = 0
       stock.dailyDate = today
     }
+    const beforeAdjustment = createAdjustmentSnapshot(stock)
+    const adjustmentDirection: StockAdjustmentDirection = res.clearPosition
+      ? 'clear'
+      : delta > 0
+        ? 'buy'
+        : 'sell'
+    const adjustmentFee = calcTradeFee(tradePrice, Math.abs(delta), delta > 0 ? 'buy' : 'sell')
 
     if (delta > 0) {
       // 加仓价为未含手续费的成交价；买入手续费计入当前持仓成本基准
@@ -682,9 +764,58 @@ const adjustStockFlow = async (stock: StockItem) => {
     }
 
     stock.amount = newAmount
+    addAdjustmentRecord(stock, {
+      id: `${stock.code}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      date: today,
+      createdAt: new Date().toISOString(),
+      direction: adjustmentDirection,
+      price: tradePrice,
+      amount: Math.abs(delta),
+      fee: adjustmentFee,
+      isTodayTrade,
+      before: beforeAdjustment,
+      after: createAdjustmentSnapshot(stock)
+    })
     saveStocks()
     toastRef.value?.show(t('positionUpdated'), 'success')
     return // 操作完成，退出循环
+  }
+}
+
+const undoLastAdjustment = async (stock: StockItem) => {
+  const records = getTodayAdjustmentRecords(stock)
+  const lastRecord = records[records.length - 1]
+  if (!lastRecord) {
+    toastRef.value?.show(t('adjustmentRecordsEmpty'), 'info')
+    return
+  }
+
+  if (!snapshotsEqual(stock, lastRecord.after)) {
+    toastRef.value?.show(t('adjustmentUndoConflict'), 'fail')
+    return
+  }
+
+  const confirmed = await confirmRef.value?.open(t('undoAdjustmentTitle'), t('undoAdjustmentConfirm'))
+  if (!confirmed) return
+
+  restoreAdjustmentSnapshot(stock, lastRecord.before)
+  const remainingRecords = records.slice(0, -1)
+  if (remainingRecords.length > 0) {
+    stock.adjustmentRecords = remainingRecords
+  } else {
+    delete stock.adjustmentRecords
+  }
+  saveStocks()
+  toastRef.value?.show(t('adjustmentUndone'), 'success')
+}
+
+const showAdjustmentRecords = async (stock: StockItem) => {
+  if (pruneAdjustmentRecords(stock)) saveStocks()
+  const quote = quotes.value[stock.code]
+  const stockName = quote?.name ? `${quote.name} (${stock.code})` : stock.code
+  const result = await adjustmentHistoryRef.value?.open(stockName, getTodayAdjustmentRecords(stock))
+  if (result === 'undo') {
+    await undoLastAdjustment(stock)
   }
 }
 
@@ -974,6 +1105,7 @@ onUnmounted(() => {
         @toggle-sort="toggleSort"
         @adjust-stock="adjustStockFlow"
         @set-price-alert="setPriceAlert"
+        @show-adjustment-records="showAdjustmentRecords"
       />
       <WatchStockTable
         v-else
@@ -1057,6 +1189,9 @@ onUnmounted(() => {
 
     <!-- 通用确认组件 -->
     <Confirm ref="confirmRef" />
+
+    <!-- 当日调仓记录组件 -->
+    <AdjustmentHistoryModal ref="adjustmentHistoryRef" />
 
     <!-- 全局提示组件 -->
     <Toast ref="toastRef" />

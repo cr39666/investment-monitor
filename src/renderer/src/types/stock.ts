@@ -4,6 +4,34 @@ export interface PriceAlert {
   triggered: boolean
 }
 
+export type StockAdjustmentDirection = 'buy' | 'sell' | 'clear'
+
+export interface StockAdjustmentSnapshot {
+  cost: number
+  amount: number
+  buyDate?: string
+  isNew?: boolean
+  realizedPnl?: number
+  positionCostBasis?: number
+  totalCostBasis?: number
+  dailyRealizedPnl?: number
+  dailyDate?: string
+  dailyBasis?: number
+}
+
+export interface StockAdjustmentRecord {
+  id: string
+  date: string
+  createdAt: string
+  direction: StockAdjustmentDirection
+  price: number
+  amount: number
+  fee: number
+  isTodayTrade: boolean
+  before: StockAdjustmentSnapshot
+  after: StockAdjustmentSnapshot
+}
+
 export interface StockItem {
   code: string
   cost: number
@@ -17,6 +45,7 @@ export interface StockItem {
   dailyRealizedPnl?: number
   dailyDate?: string
   dailyBasis?: number
+  adjustmentRecords?: StockAdjustmentRecord[]
 }
 
 export interface WatchStockItem {
