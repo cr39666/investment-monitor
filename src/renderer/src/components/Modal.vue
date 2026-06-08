@@ -12,7 +12,7 @@ const tradePrice = ref(0)
 const amount = ref(0)
 const currentAmount = ref(0) // 当前持仓手数（调仓模式下使用）
 const alertDirection = ref<'up' | 'down'>('up')
-const tradeDirection = ref<'buy' | 'sell' | 'clear'>('buy')
+const tradeDirection = ref<'buy' | 'sell' | 'clear' | null>(null)
 const isTodayNewPosition = ref(false) // 是否当日新建仓
 const isTodayTrade = ref(true) // 调仓模式：是否当日操作
 const shakeHint = ref('') // 临时提示
@@ -90,7 +90,7 @@ const open = (
   currentAmount.value = defaults.currentAmount || 0
   alertDirection.value = defaults.direction || 'up'
   isPriceUp.value = defaults.isUp ?? null
-  tradeDirection.value = 'buy' // 默认买入
+  tradeDirection.value = type === 'transaction' ? null : 'buy'
   isTodayNewPosition.value = false // 默认不是当日新建仓
   isTodayTrade.value = true // 默认当日操作
   isVisible.value = true
@@ -119,6 +119,14 @@ const showHint = (msg: string) => {
   }, 1500)
 }
 
+const selectTradeDirection = (direction: 'buy' | 'sell' | 'clear') => {
+  tradeDirection.value = direction
+  nextTick(() => {
+    priceInput.value?.focus()
+    priceInput.value?.select()
+  })
+}
+
 const closeModal = () => {
   isVisible.value = false
   window.removeEventListener('keydown', handleKeydown, true)
@@ -130,10 +138,16 @@ const handleConfirm = () => {
     showHint(t('amountCannotBeNegative'))
     return
   }
-  // 调仓时，变动手数不能为0（清仓除外）
-  if (modalType.value === 'transaction' && tradeDirection.value !== 'clear' && amount.value === 0) {
-    showHint(t('tradeAmountZero'))
-    return
+  if (modalType.value === 'transaction') {
+    if (!tradeDirection.value) {
+      showHint(t('selectTradeDirection'))
+      return
+    }
+    // 调仓时，变动手数不能为0（清仓除外）
+    if (tradeDirection.value !== 'clear' && amount.value === 0) {
+      showHint(t('tradeAmountZero'))
+      return
+    }
   }
   closeModal()
   // 清仓模式
@@ -247,14 +261,14 @@ defineExpose({ open })
                 <button
                   class="direction-btn buy"
                   :class="{ active: tradeDirection === 'buy' }"
-                  @click="tradeDirection = 'buy'"
+                  @click="selectTradeDirection('buy')"
                 >
                   ➕ {{ t('tradeBuy') }}
                 </button>
                 <button
                   class="direction-btn sell"
                   :class="{ active: tradeDirection === 'sell' }"
-                  @click="tradeDirection = 'sell'"
+                  @click="selectTradeDirection('sell')"
                 >
                   ➖ {{ t('tradeSell') }}
                 </button>
@@ -262,13 +276,13 @@ defineExpose({ open })
                   v-if="currentAmount > 0"
                   class="clear-position-btn"
                   :class="{ active: tradeDirection === 'clear' }"
-                  @click="tradeDirection = 'clear'"
+                  @click="selectTradeDirection('clear')"
                 >
                   🧹 {{ t('clearPosition') }}
                 </button>
               </div>
               <!-- 选完方向后显示价格输入 -->
-              <div class="modal-input-group">
+              <div v-if="modalType === 'add' || tradeDirection" class="modal-input-group">
                 <input
                   ref="priceInput"
                   v-model.number="tradePrice"
@@ -292,7 +306,10 @@ defineExpose({ open })
                 </div>
               </div>
               <!-- 添加模式或有持仓时显示手数输入（清仓不需要） -->
-              <div v-if="modalType === 'add' || tradeDirection !== 'clear'" class="modal-input-group">
+              <div
+                v-if="modalType === 'add' || (tradeDirection && tradeDirection !== 'clear')"
+                class="modal-input-group"
+              >
                 <input ref="qtyInput" v-model.number="amount" type="number" class="modal-input" :min="0" />
                 <label>{{ modalType === 'add' ? t('lotsHint') : t('deltaLots') }}</label>
               </div>
@@ -305,7 +322,7 @@ defineExpose({ open })
                 </label>
               </div>
               <!-- 调仓模式：是否当日操作 -->
-              <div v-if="modalType === 'transaction'" class="modal-checkbox-group">
+              <div v-if="modalType === 'transaction' && tradeDirection" class="modal-checkbox-group">
                 <label class="checkbox-label">
                   <input v-model="isTodayTrade" type="checkbox" class="checkbox-input" />
                   <span class="checkbox-custom"></span>

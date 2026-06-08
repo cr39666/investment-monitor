@@ -155,6 +155,7 @@ export default {
   adjustPosition: '调仓确认',
   tradeBuy: '买入',
   tradeSell: '卖出',
+  selectTradeDirection: '请先选择买入/卖出/清仓',
   tradeAmountZero: '请输入手数',
   currentLots: '当前持有',
   lotsUnit: '手',
