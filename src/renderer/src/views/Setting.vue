@@ -612,7 +612,7 @@ onUnmounted(() => {
 
 /* 自定义滚动条样式，与整体毛玻璃风格一致 */
 .setting-content::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .setting-content::-webkit-scrollbar-track {

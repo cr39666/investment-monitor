@@ -84,7 +84,7 @@ const fetchAndRefreshPnl = () => {
     return
   }
 
-  // 检查缓存是否过期（非今天的缓存）
+  // 检查缓存是否过期（非当天的缓存）
   const cachedDate = localStorage.getItem('cached_quotes_date')
   const today = getTodayStr()
   if (cachedDate !== today) {
@@ -168,7 +168,7 @@ const calcPnl = (stocks: StockItem[], quotes: Record<string, StockQuote>) => {
     const q = quotes[s.code]
     if (!q) return sum
 
-    // 如果今天买入，当日盈亏 = (现价 - 买入价) × 股数
+    // 如果当天买入，当日盈亏 = (现价 - 买入价) × 股数
     if (s.buyDate === today) {
       return sum + (q.currentPrice - s.cost) * s.amount * 100
     }

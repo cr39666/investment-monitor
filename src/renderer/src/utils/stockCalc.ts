@@ -6,7 +6,7 @@ export const getPositionCostBasis = (stock: StockItem): number => {
   return Number.isFinite(basis) ? basis : 0
 }
 
-// 今天买入：当前市值 - 当前持仓成本基准 + 当日已实现盈亏
+// 当天买入：当前市值 - 当前持仓成本基准 + 当日已实现盈亏
 // 之前买入：(现价 - 昨收) × 股数 + 当日已实现盈亏修正
 // 跨日陈旧昨收（quoteDate !== today）返回 null，避免不重启跨零点后显示"昨天的日盈"
 export const calculateDailyPnl = (stock: StockItem, quote: StockQuote | undefined, today: string): number | null => {

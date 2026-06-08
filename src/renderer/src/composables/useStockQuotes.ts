@@ -34,7 +34,7 @@ export const useStockQuotes = (
     const savedDate = localStorage.getItem(CACHE_DATE_KEY)
     const today = getTodayStr()
 
-    // 如果缓存不是今天的，清除缓存（确保使用新的昨收价）
+    // 如果缓存不是当天的，清除缓存（确保使用新的昨收价）
     if (savedDate !== today) {
       localStorage.removeItem(CACHE_KEY)
       localStorage.removeItem(CACHE_DATE_KEY)

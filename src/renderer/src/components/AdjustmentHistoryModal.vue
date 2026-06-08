@@ -137,7 +137,7 @@ defineExpose({ open })
   max-height: 96vh;
   display: flex;
   flex-direction: column;
-  padding: 8px 12px;
+  padding: 6px 10px;
   background-color: #1a1c26;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
@@ -151,10 +151,10 @@ defineExpose({ open })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: bold;
-  padding-bottom: 4px;
-  margin-bottom: 4px;
+  padding-bottom: 2px;
+  margin-bottom: 2px;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
@@ -162,14 +162,14 @@ defineExpose({ open })
 
 .history-btn-icon {
   cursor: pointer;
-  padding: 4px;
+  padding: 2px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
+  min-width: 16px;
   line-height: 1;
-  font-size: 14px;
+  font-size: 12px;
   transition: background-color 0.2s;
 }
 
@@ -196,7 +196,8 @@ defineExpose({ open })
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-right: 6px;
+  padding-right: 4px;
+  margin-right: -4px;
 }
 
 .history-body::-webkit-scrollbar {
@@ -209,11 +210,11 @@ defineExpose({ open })
 
 .history-body::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .history-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .history-msg {
