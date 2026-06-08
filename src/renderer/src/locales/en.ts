@@ -161,6 +161,7 @@ export default {
   adjustPosition: 'Adjust Position',
   tradeBuy: 'Buy',
   tradeSell: 'Sell',
+  selectTradeDirection: 'Choose Buy, Sell, or Sell All first',
   tradeAmountZero: 'Please enter lots',
   currentLots: 'Holding',
   lotsUnit: 'lot(s)',
