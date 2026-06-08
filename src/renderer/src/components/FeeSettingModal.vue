@@ -181,7 +181,7 @@ onBeforeUnmount(() => {
   max-height: 96vh;
   display: flex;
   flex-direction: column;
-  padding: 8px 12px;
+  padding: 6px 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;

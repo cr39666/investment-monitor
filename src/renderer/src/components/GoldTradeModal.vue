@@ -267,7 +267,7 @@ onBeforeUnmount(() => {
   max-height: 96vh;
   display: flex;
   flex-direction: column;
-  padding: 8px 12px;
+  padding: 6px 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
@@ -277,10 +277,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: bold;
-  padding-bottom: 4px;
-  margin-bottom: 4px;
+  padding-bottom: 2px;
+  margin-bottom: 2px;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
@@ -288,7 +288,7 @@ onBeforeUnmount(() => {
 
 .modal-btn {
   cursor: pointer;
-  padding: 4px;
+  padding: 2px;
   border-radius: 4px;
   transition: background-color 0.2s;
   display: flex;

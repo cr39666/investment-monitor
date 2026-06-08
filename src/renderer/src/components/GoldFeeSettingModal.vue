@@ -110,13 +110,7 @@ onBeforeUnmount(() => {
             <!-- 买入费率 -->
             <div class="modal-input-group">
               <span class="input-label">{{ t('goldBuyFeeRate') }}</span>
-              <input
-                ref="firstInput"
-                v-model="buyFeeRate"
-                type="number"
-                class="modal-input"
-                step="0.01"
-              />
+              <input ref="firstInput" v-model="buyFeeRate" type="number" class="modal-input" step="0.01" />
               <span class="input-unit">%</span>
             </div>
             <div class="input-hint">{{ t('goldBuyFeeHint') }}</div>
@@ -124,12 +118,7 @@ onBeforeUnmount(() => {
             <!-- 卖出费率 -->
             <div class="modal-input-group">
               <span class="input-label">{{ t('goldSellFeeRate') }}</span>
-              <input
-                v-model="sellFeeRate"
-                type="number"
-                class="modal-input"
-                step="0.01"
-              />
+              <input v-model="sellFeeRate" type="number" class="modal-input" step="0.01" />
               <span class="input-unit">%</span>
             </div>
             <div class="input-hint">{{ t('goldSellFeeHint') }}</div>
@@ -170,7 +159,7 @@ onBeforeUnmount(() => {
   max-height: 96vh;
   display: flex;
   flex-direction: column;
-  padding: 8px 12px;
+  padding: 6px 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;

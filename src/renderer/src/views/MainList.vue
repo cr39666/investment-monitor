@@ -701,7 +701,7 @@ const adjustStockFlow = async (stock: StockItem) => {
     const yesterdayClose = quote?.yesterdayClose || 0
     const today = getTodayStr()
 
-    // 确保 dailyRealizedPnl 属于今天
+    // 确保 dailyRealizedPnl 属于当天
     if (stock.dailyDate !== today) {
       stock.dailyRealizedPnl = 0
       stock.dailyBasis = 0

@@ -128,9 +128,7 @@ const toggleSplit = (key: SplitKey) => {
   if (enabledSplits.value.has(key)) {
     // 禁用：从启用集合移除，并从 stockItems 移除
     enabledSplits.value.delete(key)
-    stockItems.value = stockItems.value.filter(
-      (item) => !(item.type === 'split' && item.key === key)
-    )
+    stockItems.value = stockItems.value.filter((item) => !(item.type === 'split' && item.key === key))
   } else {
     // 启用：加入启用集合，并追加到 stockItems 末尾
     enabledSplits.value.add(key)
@@ -182,9 +180,7 @@ const commit = () => {
   if (props.type === 'stock') {
     // 保存完整列顺序（主列+拆分列）到 stock_columnOrderFull
     // 格式：['name', 'price', 'split:chg', 'dpnl', ...]
-    const fullOrder = stockItems.value.map((item) =>
-      item.type === 'main' ? item.key : `split:${item.key}`
-    )
+    const fullOrder = stockItems.value.map((item) => (item.type === 'main' ? item.key : `split:${item.key}`))
     localStorage.setItem('stock_columnOrderFull', JSON.stringify(fullOrder))
     // 同时保存主列顺序（兼容旧逻辑）和启用拆分列
     const { order, splits } = extractStockState()
@@ -411,7 +407,7 @@ onBeforeUnmount(() => {
   max-height: 96vh;
   display: flex;
   flex-direction: column;
-  padding: 8px 12px;
+  padding: 6px 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;

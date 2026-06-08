@@ -98,7 +98,7 @@ defineExpose({ open })
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   width: 220px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   animation: confirmSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
