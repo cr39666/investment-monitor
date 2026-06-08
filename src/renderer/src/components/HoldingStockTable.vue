@@ -48,6 +48,7 @@ const emit = defineEmits<{
   toggleSort: [column: string]
   adjustStock: [stock: StockItem]
   setPriceAlert: [stock: StockItem]
+  showAdjustmentRecords: [stock: StockItem]
 }>()
 
 const effectiveSplitChg = computed(() => {
@@ -477,19 +478,30 @@ const displayColumnOrder = computed<string[]>(() => {
             :title="qtyDisplayMode === 0 ? t('clickToAdjust') : t('setPriceAlert')"
             @click.stop="qtyDisplayMode === 0 ? emit('adjustStock', stock) : emit('setPriceAlert', stock)"
           >
-            <div
-              class="clickable-tag"
-              :class="{ 'alert-active': qtyDisplayMode === 1 && stock.priceAlerts?.length }"
-            >
-              <template v-if="qtyDisplayMode === 0">
-                {{ stock.amount }}
-              </template>
-              <template v-else>
-                <span v-if="stock.priceAlerts?.length" class="alert-text">
-                  {{ formatPriceAlerts(stock) }}
-                </span>
-                <span v-else class="alert-placeholder">➕</span>
-              </template>
+            <div class="qty-cell-actions">
+              <div
+                class="clickable-tag"
+                :class="{ 'alert-active': qtyDisplayMode === 1 && stock.priceAlerts?.length }"
+              >
+                <template v-if="qtyDisplayMode === 0">
+                  {{ stock.amount }}
+                </template>
+                <template v-else>
+                  <span v-if="stock.priceAlerts?.length" class="alert-text">
+                    {{ formatPriceAlerts(stock) }}
+                  </span>
+                  <span v-else class="alert-placeholder">➕</span>
+                </template>
+              </div>
+              <button
+                v-if="qtyDisplayMode === 0 && stock.adjustmentRecords?.length"
+                type="button"
+                class="history-pill"
+                :title="t('viewAdjustmentRecords')"
+                @click.stop="emit('showAdjustmentRecords', stock)"
+              >
+                {{ stock.adjustmentRecords.length }}
+              </button>
             </div>
           </td>
         </template>
@@ -699,6 +711,35 @@ const displayColumnOrder = computed<string[]>(() => {
   cursor: pointer;
   background-color: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.qty-cell-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.history-pill {
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border: 1px solid rgba(241, 196, 15, 0.32);
+  border-radius: 999px;
+  background: rgba(241, 196, 15, 0.12);
+  color: #f1c40f;
+  cursor: pointer;
+  font-size: 9px;
+  line-height: 1;
+  transition:
+    background-color 0.2s,
+    transform 0.2s,
+    border-color 0.2s;
+}
+
+.history-pill:hover {
+  background: rgba(241, 196, 15, 0.25);
+  border-color: rgba(241, 196, 15, 0.55);
   transform: translateY(-1px);
 }
 

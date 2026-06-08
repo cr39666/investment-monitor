@@ -396,8 +396,8 @@ defineExpose({ open })
   justify-content: space-between;
   font-size: 13px;
   font-weight: bold;
-  padding-bottom: 8px;
-  margin-bottom: 10px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
@@ -644,9 +644,9 @@ defineExpose({ open })
 }
 
 .trade-direction-group .clear-position-btn.active {
-  background-color: rgba(231, 76, 60, 0.1);
-  color: #e74c3c;
-  box-shadow: inset 0 -2px 0 #e74c3c;
+  background-color: rgba(66, 185, 131, 0.1);
+  color: var(--ev-c-green);
+  box-shadow: inset 0 -2px 0 var(--ev-c-green);
 }
 
 /* 当前价格涨跌颜色 */
@@ -678,30 +678,6 @@ defineExpose({ open })
 .clear-icon-btn:hover {
   opacity: 1;
   background-color: rgba(231, 76, 60, 0.2);
-}
-
-/* 清仓按钮（tab 外的基础样式，被 .trade-direction-group 内样式覆盖） */
-.clear-position-btn {
-  padding: 4px 6px;
-  border: 1px solid rgba(231, 76, 60, 0.4);
-  border-radius: 4px;
-  background-color: rgba(231, 76, 60, 0.1);
-  color: #e74c3c;
-  font-size: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.clear-position-btn:hover {
-  background-color: rgba(231, 76, 60, 0.3);
-  border-color: #e74c3c;
-}
-
-.clear-position-btn.active {
-  background-color: rgba(231, 76, 60, 0.25);
-  border-color: #e74c3c;
-  color: #e74c3c;
 }
 
 /* 复选框样式 */

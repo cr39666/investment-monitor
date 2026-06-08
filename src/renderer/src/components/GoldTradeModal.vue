@@ -279,8 +279,8 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   font-size: 13px;
   font-weight: bold;
-  padding-bottom: 8px;
-  margin-bottom: 8px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
