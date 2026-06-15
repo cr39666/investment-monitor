@@ -106,6 +106,11 @@ const getTodayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// 过滤非数字字符，限制输入框只能输入数字
+const filterNumericInput = () => {
+  inputCode.value = inputCode.value.replace(/\D/g, '')
+}
+
 // 计算持有天数
 const calcHoldingDays = (fund: FundItem): number | null => {
   if (!fund.buyDate) return null
@@ -208,12 +213,18 @@ const addFund = async () => {
 
   // 先获取净值
   const quote = await fetchFundByCode(code)
-  if (quote) {
-    quotes.value[code] = quote
+
+  // 检查是否成功获取到行情数据
+  if (!quote) {
+    toastRef.value?.show(t('fundNotFound'), 'fail')
+    return
   }
 
+  // 保存行情数据
+  quotes.value[code] = quote
+
   // 弹出输入弹窗
-  await openEditModal(code, quote?.name || code, quote?.nav || 0, 1000, getTodayStr(), true)
+  await openEditModal(code, quote.name || code, quote.nav || 0, 1000, getTodayStr(), true)
   // 无论确认还是取消，都把焦点恢复到输入框，方便连续输入
   nextTick(() => fundInputRef.value?.focus())
 }
@@ -570,6 +581,7 @@ onUnmounted(() => {
             :placeholder="t('fundCode')"
             class="fund-input"
             @keyup.enter="addFund"
+            @input="filterNumericInput"
           />
           <button class="add-btn" @click="addFund"><span class="add-icon">➕</span></button>
           <button

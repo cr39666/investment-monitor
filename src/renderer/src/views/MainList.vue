@@ -343,6 +343,7 @@ const toggleStockPageMode = () => {
   localStorage.setItem('stock_pageMode', stockPageMode.value)
   selectedCodes.value = []
   clearWatchSelection()
+  inputCode.value = '' // 切换时清空输入框
   nextTick(() => stockInputRef.value?.focus())
 }
 
@@ -358,6 +359,11 @@ const formatName = (name: string | undefined): string => {
     return name.slice(0, 4) + '...'
   }
   return name
+}
+
+// 过滤非数字字符，限制输入框只能输入数字
+const filterStockCodeInput = () => {
+  inputCode.value = inputCode.value.replace(/\D/g, '')
 }
 
 const adjustmentSnapshotKeys: (keyof StockAdjustmentSnapshot)[] = [
@@ -494,7 +500,14 @@ const addStock = async () => {
   // 先获取行情以提供默认价格
   await fetchQuotesByCode(code)
   const quote = quotes.value[code]
-  const defaultPrice = quote?.currentPrice || 0
+
+  // 检查是否成功获取到行情数据
+  if (!quote || quote.currentPrice === 0) {
+    toastRef.value?.show(t('stockNotFound'), 'fail')
+    return
+  }
+
+  const defaultPrice = quote.currentPrice
 
   const res = await modalRef.value?.open('add', t('addPosition'), quote?.name || code, {
     price: defaultPrice,
@@ -532,6 +545,14 @@ const addWatchStock = async () => {
   }
 
   await fetchQuotesByCode(code)
+  const quote = quotes.value[code]
+
+  // 检查是否成功获取到行情数据
+  if (!quote || quote.currentPrice === 0) {
+    toastRef.value?.show(t('watchStockNotFound'), 'fail')
+    return
+  }
+
   watchStocks.value.push({ code })
   saveWatchStocks()
   inputCode.value = ''
@@ -1157,6 +1178,7 @@ onUnmounted(() => {
             :placeholder="stockPageMode === 'holding' ? t('code') : t('watchStockCode')"
             class="stock-input"
             @keyup.enter="handleAddAction"
+            @input="filterStockCodeInput"
           />
           <button class="add-btn" @click="handleAddAction"><span class="add-icon">➕</span></button>
           <button
