@@ -255,22 +255,41 @@ const displayStocks = computed(() => {
   })
 })
 
-// Name 这一列单行显示代码还是名称展示的追踪列表
+// Name 这一列单行显示代码还是名称展示的追踪列表（持仓列表）
 const shownCodes = ref<string[]>([])
 const toggleNameDisplay = (code: string) => {
-  if (shownCodes.value.includes(code)) {
-    shownCodes.value = shownCodes.value.filter((c) => c !== code)
+  if (stockPageMode.value === 'holding') {
+    if (shownCodes.value.includes(code)) {
+      shownCodes.value = shownCodes.value.filter((c) => c !== code)
+    } else {
+      shownCodes.value.push(code)
+    }
   } else {
-    shownCodes.value.push(code)
+    // 观察列表使用独立的 shownCodes
+    if (watchShownCodes.value.includes(code)) {
+      watchShownCodes.value = watchShownCodes.value.filter((c) => c !== code)
+    } else {
+      watchShownCodes.value.push(code)
+    }
   }
 }
 
-// Name 列全局展示模式：0=名称, 1=代码
+// Name 列全局展示模式：0=名称, 1=代码（持仓列表）
 const nameDisplayMode = ref(parseInt(localStorage.getItem('stock_nameDisplayMode') || '0'))
 const toggleNameDisplayMode = () => {
-  nameDisplayMode.value = (nameDisplayMode.value + 1) % 2
-  localStorage.setItem('stock_nameDisplayMode', String(nameDisplayMode.value))
+  if (stockPageMode.value === 'holding') {
+    nameDisplayMode.value = (nameDisplayMode.value + 1) % 2
+    localStorage.setItem('stock_nameDisplayMode', String(nameDisplayMode.value))
+  } else {
+    // 观察列表使用独立的 nameDisplayMode
+    watchNameDisplayMode.value = (watchNameDisplayMode.value + 1) % 2
+    localStorage.setItem('stock_watchNameDisplayMode', String(watchNameDisplayMode.value))
+  }
 }
+
+// 观察列表独立的 Name 显示状态
+const watchShownCodes = ref<string[]>([])
+const watchNameDisplayMode = ref(parseInt(localStorage.getItem('stock_watchNameDisplayMode') || '0'))
 
 // Price 列展示模式：0=现价, 1=涨跌幅, 2=现价/涨跌幅
 const priceDisplayMode = ref(parseInt(localStorage.getItem('stock_priceDisplayMode') || '0'))
@@ -545,7 +564,7 @@ const handleDeleteAction = async () => {
       if (confirmed) {
         watchStocks.value = watchStocks.value.filter((s) => !codesToRemove.includes(s.code))
         selectedWatchCodes.value = []
-        shownCodes.value = shownCodes.value.filter((code) => !codesToRemove.includes(code))
+        watchShownCodes.value = watchShownCodes.value.filter((code) => !codesToRemove.includes(code))
         saveWatchStocks()
         removeUnusedQuotes(codesToRemove)
         toastRef.value?.show(t('selectedRemoved'), 'info')
@@ -557,7 +576,7 @@ const handleDeleteAction = async () => {
       if (confirmed) {
         watchStocks.value = []
         selectedWatchCodes.value = []
-        shownCodes.value = shownCodes.value.filter((code) => !codesToRemove.includes(code))
+        watchShownCodes.value = watchShownCodes.value.filter((code) => !codesToRemove.includes(code))
         saveWatchStocks()
         removeUnusedQuotes(codesToRemove)
         toastRef.value?.show(t('allCleared'), 'warn')
@@ -1113,8 +1132,8 @@ onUnmounted(() => {
         :display-watch-stocks="displayWatchStocks"
         :selected-watch-codes="selectedWatchCodes"
         :quotes="quotes"
-        :shown-codes="shownCodes"
-        :name-display-mode="nameDisplayMode"
+        :shown-codes="watchShownCodes"
+        :name-display-mode="watchNameDisplayMode"
         :t="t"
         :format-name="formatName"
         @toggle-row-selection="toggleRowSelection"
