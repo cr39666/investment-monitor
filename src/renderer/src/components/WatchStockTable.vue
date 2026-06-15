@@ -26,6 +26,7 @@ const emit = defineEmits<{
         <th :title="t('currentPrice')" class="col-price">{{ t('thPrice') }}</th>
         <th :title="t('change')" class="col-num">{{ t('thChg') }}</th>
         <th :title="t('changeAmount')" class="col-num">{{ t('thChangeAmount') }}</th>
+        <th :title="t('stockCode')" class="col-code">{{ t('thCode') }}</th>
       </tr>
     </thead>
     <tbody>
@@ -67,9 +68,12 @@ const emit = defineEmits<{
           </span>
           <span v-else>--</span>
         </td>
+        <td class="col-code" :class="[(quotes[stock.code]?.changeAmount || 0) >= 0 ? 'red' : 'green']">
+          {{ stock.code }}
+        </td>
       </tr>
       <tr v-if="watchStocks.length === 0">
-        <td colspan="4" class="empty-row">{{ t('noWatchStocks') }}</td>
+        <td colspan="5" class="empty-row">{{ t('noWatchStocks') }}</td>
       </tr>
     </tbody>
   </table>
@@ -99,6 +103,7 @@ const emit = defineEmits<{
 .stock-table td:first-child,
 .stock-table td.col-name,
 .stock-table td.col-price,
+.stock-table td.col-code,
 .stock-table td:last-child {
   text-align: center;
 }
@@ -128,8 +133,14 @@ const emit = defineEmits<{
 }
 
 .stock-table td.col-price,
-.stock-table td.col-num {
+.stock-table td.col-num,
+.stock-table td.col-code {
   font-size: 14px;
+}
+
+.stock-table td.col-code {
+  font-size: 12px;
+  color: #aaa;
 }
 
 .stock-table tr {
